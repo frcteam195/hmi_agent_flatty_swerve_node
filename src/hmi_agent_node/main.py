@@ -15,7 +15,7 @@ from tf.transformations import euler_from_quaternion
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
 from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
-
+from ck_utilities_py_node.rosparam_helper import load_parameter_class
 
 @dataclass
 class DriveParams:
@@ -250,34 +250,8 @@ def init_params():
     global drive_params
     global operator_params
 
-    drive_params.drive_fwd_back_axis_id = rospy.get_param("/hmi_agent_node/drive_fwd_back_axis_id", -1)
-    drive_params.drive_fwd_back_axis_inverted = rospy.get_param("/hmi_agent_node/drive_fwd_back_axis_inverted", False)
-
-    drive_params.drive_left_right_axis_id = rospy.get_param("/hmi_agent_node/drive_left_right_axis_id", -1)
-    drive_params.drive_left_right_axis_inverted = rospy.get_param("/hmi_agent_node/drive_left_right_axis_inverted", False)
-
-    drive_params.drive_z_axis_id = rospy.get_param("/hmi_agent_node/drive_z_axis_id", -1)
-    drive_params.drive_z_axis_inverted = rospy.get_param("/hmi_agent_node/drive_z_axis_inverted", False)
-
-    drive_params.drive_z_axis_deadband = rospy.get_param("/hmi_agent_node/drive_z_axis_deadband", 0.05)
-    drive_params.drive_axis_deadband = rospy.get_param("/hmi_agent_node/drive_axis_deadband", 0.05)
-
-    drive_params.driver_unpinch_button_id = rospy.get_param("/hmi_agent_node/driver_unpinch_button_id", -1)
-    drive_params.driver_pinch_button_id = rospy.get_param("/hmi_agent_node/driver_pinch_button_id", -1)
-    drive_params.driver_intake_button_id = rospy.get_param("/hmi_agent_node/driver_intake_button_id", -1)
-    drive_params.driver_outtake_button_id = rospy.get_param("hmi_agent_node/driver_outtake_button_id", -1)
-
-    operator_params.party_mode_button_id = rospy.get_param("/hmi_agent_node/party_mode_button_id", -1)
-    operator_params.operator_pinch_button_id = rospy.get_param("/hmi_agent_node/operator_pinch_button_id", -1)
-    operator_params.operator_unpinch_button_id = rospy.get_param("/hmi_agent_node/operator_unpinch_button_id", -1)
-    operator_params.intake_axis_id = rospy.get_param("/hmi_agent_node/intake_axis_id", -1)
-    operator_params.outtake_axis_id = rospy.get_param("/hmi_agent_node/outtake_axis_id", -1)
-
-    operator_params.led_control_pov_id = rospy.get_param("/hmi_agent_node/led_control_pov_id", -1)
-    operator_params.activation_threshold = rospy.get_param("/hmi_agent_node/activation_threshold", 0)
-    operator_params.high_cone_button_id = rospy.get_param("/hmi_agent_node/high_cone_button_id", -1)
-
-
+    load_parameter_class(drive_params)
+    load_parameter_class(operator_params)
 
 def ros_main(node_name):
     global hmi_pub
