@@ -10,10 +10,11 @@ from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg._Odometry import Odometry
 from actions_node.game_specific_actions import HighConeAction
+from actions_node.ActionRunner import ActionRunner
 from tf.transformations import euler_from_quaternion
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
-
+from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
 
 
 @dataclass
@@ -49,6 +50,8 @@ class OperatorParams:
     led_control_pov_id: int = -1
 
 
+
+action_runner = ActionRunner()
 
 drive_params = DriveParams()
 operator_params = OperatorParams()
@@ -136,6 +139,7 @@ def process_intake_control():
     global operator_controller
     global operator_params
     global pinch_active
+    global action_runner
 
     intake_control = Intake_Control()
 
@@ -168,12 +172,13 @@ def joystick_callback(msg: Joystick_Status):
 
     global drive_params
     global operator_params
+    global action_runner
     
     Joystick.update(msg)
 
     hmi_update_msg = HMI_Signals()
 
-    hmi_update_msg.drivetrain_brake = drive_joystick.getButton(drive_params.driver_intake_button_id)
+    hmi_update_msg.drivetrain_brake = True
 
     invert_axis_fwd_back = -1 if drive_params.drive_fwd_back_axis_inverted else 1
     invert_axis_left_right = -1 if drive_params.drive_left_right_axis_inverted else 1
@@ -207,126 +212,38 @@ def joystick_callback(msg: Joystick_Status):
     process_leds()
     process_intake_control()
 
-    if odometry_subscriber.get() is not None:
-        odometry_msg = odometry_subscriber.get()
-        (_, _, yaw) = euler_from_quaternion (odometry_msg.pose.pose.orientation)
-        yaw = normalize_to_2_pi(yaw)
-        recent_heading = math.degrees(yaw)
+
+    #TODO This does not work. Generating tons of errors in local launch. Looks like type mismatch
+    # if odometry_subscriber.get() is not None:
+    #     odometry_msg = odometry_subscriber.get()
+    #     (_, _, yaw) = euler_from_quaternion (odometry_msg.pose.pose.orientation)
+    #     yaw = normalize_to_2_pi(yaw)
+    #     recent_heading = math.degrees(yaw)
 
     facing_alliance = Alliance.RED if 90 < recent_heading < 270 else Alliance.BLUE
 
-    if operator_controller.getButton(operator_params.high_cone_button_id):
+
+    ################################################################################
+    ###                         CONTROL MAPPINGS                                 ###
+    ################################################################################
+
+    if operator_controller.getRisingEdgeButton(operator_params.high_cone_button_id):
         action = HighConeAction(reversed=facing_alliance != robot_status.get_alliance())
-        action.start()
-
+        action_runner.start_action(action)
         
 
-        
 
-    if drive_joystick.getButton(drive_params.driver_outtake_button_id):
-        odom = Odometry()
+    ################################################################################
+    ###                         END CONTROL MAPPINGS                             ###
+    ################################################################################
 
-        odom.header.stamp = rospy.Time.now()
-        odom.header.frame_id = 'odom'
-        odom.child_frame_id = 'base_link'
 
-        odom.pose.pose.orientation.w = 1
-        odom.pose.pose.orientation.x = 0
-        odom.pose.pose.orientation.y = 0
-        odom.pose.pose.orientation.z = 0
-        odom.pose.pose.position.x = 0
-        odom.pose.pose.position.y = 0
-        odom.pose.pose.position.z = 0
 
-        odom.twist.twist.linear.x = 0
-        odom.twist.twist.linear.y = 0
-        odom.twist.twist.linear.z = 0
-
-        odom.twist.twist.angular.x = 0
-        odom.twist.twist.angular.y = 0
-        odom.twist.twist.angular.z = 0
-
-        odom.pose.covariance = [
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.00001,
-        ]
-
-        odom.twist.covariance =[
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.001,
-        ]
-
-        odom_pub.publish(odom)
+    if drive_joystick.getRisingEdgeButton(drive_params.driver_outtake_button_id):
+        odom_pub.publish(get_reset_odom_msg())
 
     hmi_pub.publish(hmi_update_msg)
+    action_runner.loop(robot_status.get_mode())
 
 
 def init_params():
