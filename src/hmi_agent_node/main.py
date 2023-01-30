@@ -6,12 +6,12 @@ from ck_ros_base_msgs_node.msg import Joystick_Status, Robot_Status
 from ck_ros_msgs_node.msg import HMI_Signals
 from ck_utilities_py_node.joystick import Joystick
 from ck_utilities_py_node.ckmath import *
+from ck_utilities_py_node.geometry import *
 from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
-from nav_msgs.msg._Odometry import Odometry
+from nav_msgs.msg import *
 from actions_node.game_specific_actions import HighConeAction
 from actions_node.ActionRunner import ActionRunner
-from tf.transformations import euler_from_quaternion
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
 from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
@@ -212,13 +212,12 @@ def joystick_callback(msg: Joystick_Status):
     process_leds()
     process_intake_control()
 
-
-    #TODO This does not work. Generating tons of errors in local launch. Looks like type mismatch
-    # if odometry_subscriber.get() is not None:
-    #     odometry_msg = odometry_subscriber.get()
-    #     (_, _, yaw) = euler_from_quaternion (odometry_msg.pose.pose.orientation)
-    #     yaw = normalize_to_2_pi(yaw)
-    #     recent_heading = math.degrees(yaw)
+    if odometry_subscriber.get() is not None:
+        odometry_msg = odometry_subscriber.get()
+        rotation = Rotation(odometry_msg.pose.pose.orientation)
+        yaw = rotation.yaw
+        yaw = normalize_to_2_pi(yaw)
+        recent_heading = math.degrees(yaw)
 
     facing_alliance = Alliance.RED if 90 < recent_heading < 270 else Alliance.BLUE
 
