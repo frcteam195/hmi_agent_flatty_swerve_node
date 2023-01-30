@@ -9,7 +9,11 @@ from ck_utilities_py_node.ckmath import *
 from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg._Odometry import Odometry
+from actions_node.game_specific_actions import HighConeAction
+from tf.transformations import euler_from_quaternion
 import numpy as np
+from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
+
 
 
 @dataclass
@@ -33,11 +37,14 @@ class DriveParams:
 
 @dataclass
 class OperatorParams:
+    outtake_axis_id: int = -1
+    intake_axis_id: int = -1
+    activation_threshold: float = 0
+
+    high_cone_button_id: int = -1
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
-    operator_intake_button_id: int = -1
-    operator_outtake_button_id: int = -1
 
     led_control_pov_id: int = -1
 
@@ -48,6 +55,7 @@ operator_params = OperatorParams()
 
 hmi_pub = None
 odom_pub = None
+odometry_subscriber = None
 intake_pub = None
 led_control_pub = None
 
@@ -56,6 +64,7 @@ party_time = True
 led_control_msg = Led_Control()
 
 pinch_active = False
+recent_heading = 0
 
 drive_joystick = Joystick(0)
 operator_controller = Joystick(1)
@@ -70,6 +79,7 @@ def process_leds():
     global operator_params
     global party_time
     global robot_status
+
 
     led_control_msg.control_mode = Led_Control.ANIMATE
     led_control_msg.number_leds = 8
@@ -136,10 +146,10 @@ def process_intake_control():
 
     intake_control.pincher_solenoid_on = pinch_active
 
-    if drive_joystick.getButton(drive_params.driver_intake_button_id) or operator_controller.getButton(operator_params.operator_intake_button_id):
+    if drive_joystick.getButton(drive_params.driver_intake_button_id) or operator_controller.getRawAxis(operator_params.intake_axis_id) > operator_params.activation_threshold:
         intake_control.rollers_intake = True
         intake_control.rollers_outtake = False
-    elif drive_joystick.getButton(drive_params.driver_outtake_button_id) or operator_controller.getButton(operator_params.operator_outtake_button_id):
+    elif drive_joystick.getButton(drive_params.driver_outtake_button_id) or operator_controller.getRawAxis(operator_params.outtake_axis_id) > operator_params.activation_threshold:
         intake_control.rollers_intake = False 
         intake_control.rollers_outtake = True 
     
@@ -148,6 +158,8 @@ def process_intake_control():
 def joystick_callback(msg: Joystick_Status):
     global drivetrain_orientation
     global hmi_pub
+    global odometry_subscriber
+    global recent_heading
 
     global robot_status
 
@@ -194,6 +206,22 @@ def joystick_callback(msg: Joystick_Status):
 
     process_leds()
     process_intake_control()
+
+    if odometry_subscriber.get() is not None:
+        odometry_msg = odometry_subscriber.get()
+        (_, _, yaw) = euler_from_quaternion (odometry_msg.pose.pose.orientation)
+        yaw = normalize_to_2_pi(yaw)
+        recent_heading = math.degrees(yaw)
+
+    facing_alliance = Alliance.RED if 90 < recent_heading < 270 else Alliance.BLUE
+
+    if operator_controller.getButton(operator_params.high_cone_button_id):
+        action = HighConeAction(reversed=facing_alliance != robot_status.get_alliance())
+        action.start()
+
+        
+
+        
 
     if drive_joystick.getButton(drive_params.driver_outtake_button_id):
         odom = Odometry()
@@ -325,10 +353,12 @@ def init_params():
     operator_params.party_mode_button_id = rospy.get_param("/hmi_agent_node/party_mode_button_id", -1)
     operator_params.operator_pinch_button_id = rospy.get_param("/hmi_agent_node/operator_pinch_button_id", -1)
     operator_params.operator_unpinch_button_id = rospy.get_param("/hmi_agent_node/operator_unpinch_button_id", -1)
-    operator_params.operator_intake_button_id = rospy.get_param("/hmi_agent_node/operator_intake_button_id", -1)
-    operator_params.operator_outtake_button_id = rospy.get_param("/hmi_agent_node/operator_outtake_button_id", -1)
+    operator_params.intake_axis_id = rospy.get_param("/hmi_agent_node/intake_axis_id", -1)
+    operator_params.outtake_axis_id = rospy.get_param("/hmi_agent_node/outtake_axis_id", -1)
 
     operator_params.led_control_pov_id = rospy.get_param("/hmi_agent_node/led_control_pov_id", -1)
+    operator_params.activation_threshold = rospy.get_param("/hmi_agent_node/activation_threshold", 0)
+    operator_params.high_cone_button_id = rospy.get_param("/hmi_agent_node/high_cone_button_id", -1)
 
 
 
@@ -337,6 +367,8 @@ def ros_main(node_name):
     global odom_pub
     global intake_pub
     global led_control_pub
+    global odometry_subscriber
+
     rospy.init_node(node_name)
     init_params()
 
@@ -346,6 +378,7 @@ def ros_main(node_name):
     odom_pub = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
     intake_pub = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
     led_control_pub = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
-
+    odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
+    odometry_subscriber.register_for_updates("odometry/filtered")
     rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=joystick_callback, queue_size=1, tcp_nodelay=True)
     rospy.spin()
