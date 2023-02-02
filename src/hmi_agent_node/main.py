@@ -10,7 +10,7 @@ from ck_utilities_py_node.geometry import *
 from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg import *
-from actions_node.game_specific_actions import HighConeAction
+from actions_node.game_specific_actions.HighConeAction import HighConeAction
 from actions_node.ActionRunner import ActionRunner
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
