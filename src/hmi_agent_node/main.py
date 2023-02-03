@@ -11,6 +11,10 @@ from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg import *
 from actions_node.game_specific_actions.HighConeAction import HighConeAction
+from actions_node.game_specific_actions.HighCubeAction import HighCubeAction
+from actions_node.game_specific_actions.MidCubeAction import MidCubeAction
+from actions_node.game_specific_actions.HybridAction import HybridAction
+from actions_node.game_specific_actions.InBotAction import InBotAction
 from actions_node.ActionRunner import ActionRunner
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
@@ -43,6 +47,10 @@ class OperatorParams:
     activation_threshold: float = 0
 
     high_cone_button_id: int = -1
+    high_cube_button_id: int = -1
+    mid_cube_button_id: int = -1
+    hybrid_button_id: int = -1
+    in_bot_button_id: int = -1
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
@@ -230,8 +238,22 @@ def joystick_callback(msg: Joystick_Status):
         action = HighConeAction(reversed=facing_alliance != robot_status.get_alliance())
         action_runner.start_action(action)
         
+    if operator_controller.getRisingEdgeButton(operator_params.high_cube_button_id):
+        action = HighCubeAction(reversed=facing_alliance != robot_status.get_alliance())
+        action_runner.start_action(action)
 
+    if operator_controller.getRisingEdgeButton(operator_params.mid_cube_button_id):
+        action = MidCubeAction(reversed=facing_alliance != robot_status.get_alliance())
+        action_runner.start_action(action)
 
+    if operator_controller.getRisingEdgeButton(operator_params.hybrid_button_id):
+        action = HybridAction(reversed=facing_alliance != robot_status.get_alliance())
+        action_runner.start_action(action)
+    
+    if operator_controller.getRisingEdgeButton(operator_params.in_bot_button_id):
+        action = InBotAction(reversed=facing_alliance != robot_status.get_alliance())
+        action_runner.start_action(action)
+    
     ################################################################################
     ###                         END CONTROL MAPPINGS                             ###
     ################################################################################
