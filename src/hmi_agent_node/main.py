@@ -42,13 +42,11 @@ class OperatorParams:
     intake_axis_id: int = -1
     activation_threshold: float = 0
 
-    high_cone_button_id: int = -1
-    high_cube_button_id: int = -1
-    mid_cube_button_id: int = -1
-    hybrid_button_id: int = -1
+    ground_intake_button_id: int = -1
+    hybrid_node_button_id: int = -1
+    mid_node_button_id: int = -1
+    high_node_button_id: int = -1
     in_bot_button_id: int = -1
-    mid_cone_button_id: int = -1
-    ground_button_id: int = -1
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
@@ -179,6 +177,8 @@ def joystick_callback(msg: Joystick_Status):
     global drive_params
     global operator_params
     global action_runner
+
+    global pinch_active
     
     Joystick.update(msg)
 
@@ -211,8 +211,6 @@ def joystick_callback(msg: Joystick_Status):
     hmi_update_msg.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
     hmi_update_msg.drivetrain_swerve_percent_angular_rot = z
 
-
-
     hmi_update_msg.drivetrain_orientation = drivetrain_orientation
 
     process_leds()
@@ -232,33 +230,31 @@ def joystick_callback(msg: Joystick_Status):
     ###                         CONTROL MAPPINGS                                 ###
     ################################################################################
 
-    if operator_controller.getRisingEdgeButton(operator_params.high_cone_button_id):
-        action = HighConeAction(reversed=facing_alliance != robot_status.get_alliance())
-        action_runner.start_action(action)
+    arm_action = None
+
+    if operator_controller.getRisingEdgeButton(operator_params.high_node_button_id):
+        if pinch_active:
+            arm_action = HighConeAction(reversed=facing_alliance != robot_status.get_alliance())
+        else:
+            arm_action = HighCubeAction(reversed=facing_alliance != robot_status.get_alliance())
         
-    if operator_controller.getRisingEdgeButton(operator_params.high_cube_button_id):
-        action = HighCubeAction(reversed=facing_alliance != robot_status.get_alliance())
-        action_runner.start_action(action)
-
-    if operator_controller.getRisingEdgeButton(operator_params.mid_cube_button_id):
-        action = MidCubeAction(reversed=facing_alliance != robot_status.get_alliance())
-
-    if operator_controller.getButton(operator_params.mid_cone_button_id):
-        action = MidConeAction(reversed=facing_alliance != robot_status.get_alliance())
-        action_runner.start_action(action)
+    if operator_controller.getRisingEdgeButton(operator_params.mid_node_button_id):
+        if pinch_active:
+            arm_action = MidConeAction(reversed=facing_alliance != robot_status.get_alliance())
+        else:
+            arm_action = MidCubeAction(reversed=facing_alliance != robot_status.get_alliance())    
         
-    if operator_controller.getButton(operator_params.ground_button_id):
-        action = GroundAction(reversed=facing_alliance != robot_status.get_alliance())
-        action_runner.start_action(action)
-
-    if operator_controller.getRisingEdgeButton(operator_params.hybrid_button_id):
-        action = HybridAction(reversed=facing_alliance != robot_status.get_alliance())
-        action_runner.start_action(action)
-    
+    if operator_controller.getRisingEdgeButton(operator_params.hybrid_node_button_id):
+        arm_action = HybridAction(reversed=facing_alliance != robot_status.get_alliance())
+ 
     if operator_controller.getRisingEdgeButton(operator_params.in_bot_button_id):
-        action = InBotAction(reversed=facing_alliance != robot_status.get_alliance())
-        action_runner.start_action(action)
+        arm_action = InBotAction()
+
+    # TODO: Which way ground go?
     
+    if arm_action is not None:
+        action_runner.start_action(arm_action)
+
     ################################################################################
     ###                         END CONTROL MAPPINGS                             ###
     ################################################################################
