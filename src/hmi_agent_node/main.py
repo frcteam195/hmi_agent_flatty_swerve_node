@@ -10,7 +10,7 @@ from ck_utilities_py_node.geometry import *
 from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg import *
-from actions_node.game_specific_actions import HighConeAction, MidConeAction
+from actions_node.game_specific_actions import HighConeAction, MidConeAction, GroundAction
 from actions_node.ActionRunner import ActionRunner
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
@@ -44,6 +44,7 @@ class OperatorParams:
 
     high_cone_button_id: int = -1
     mid_cone_button_id: int = -1
+    ground_button_id: int = -1
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
@@ -235,6 +236,9 @@ def joystick_callback(msg: Joystick_Status):
         action = MidConeAction(reversed=facing_alliance != robot_status.get_alliance())
         action_runner.start_action(action)
         
+    if operator_controller.getButton(operator_params.ground_button_id):
+        action = GroundAction(reversed=facing_alliance != robot_status.get_alliance())
+        action_runner.start_action(action)
 
     ################################################################################
     ###                         END CONTROL MAPPINGS                             ###
