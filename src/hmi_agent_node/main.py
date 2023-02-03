@@ -10,11 +10,7 @@ from ck_utilities_py_node.geometry import *
 from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg import *
-from actions_node.game_specific_actions.HighConeAction import HighConeAction
-from actions_node.game_specific_actions.HighCubeAction import HighCubeAction
-from actions_node.game_specific_actions.MidCubeAction import MidCubeAction
-from actions_node.game_specific_actions.HybridAction import HybridAction
-from actions_node.game_specific_actions.InBotAction import InBotAction
+from actions_node.game_specific_actions import HighConeAction, HighCubeAction, MidConeAction, MidCubeAction, HybridAction, GroundAction, InBotAction
 from actions_node.ActionRunner import ActionRunner
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
@@ -51,6 +47,8 @@ class OperatorParams:
     mid_cube_button_id: int = -1
     hybrid_button_id: int = -1
     in_bot_button_id: int = -1
+    mid_cone_button_id: int = -1
+    ground_button_id: int = -1
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
@@ -90,7 +88,7 @@ def process_leds():
     global operator_params
     global party_time
     global robot_status
-
+ 
 
     led_control_msg.control_mode = Led_Control.ANIMATE
     led_control_msg.number_leds = 8
@@ -244,6 +242,13 @@ def joystick_callback(msg: Joystick_Status):
 
     if operator_controller.getRisingEdgeButton(operator_params.mid_cube_button_id):
         action = MidCubeAction(reversed=facing_alliance != robot_status.get_alliance())
+
+    if operator_controller.getButton(operator_params.mid_cone_button_id):
+        action = MidConeAction(reversed=facing_alliance != robot_status.get_alliance())
+        action_runner.start_action(action)
+        
+    if operator_controller.getButton(operator_params.ground_button_id):
+        action = GroundAction(reversed=facing_alliance != robot_status.get_alliance())
         action_runner.start_action(action)
 
     if operator_controller.getRisingEdgeButton(operator_params.hybrid_button_id):
@@ -270,6 +275,7 @@ def joystick_callback(msg: Joystick_Status):
 def init_params():
     global drive_params
     global operator_params
+
 
     load_parameter_class(drive_params)
     load_parameter_class(operator_params)
