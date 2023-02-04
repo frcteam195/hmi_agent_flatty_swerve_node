@@ -10,7 +10,7 @@ from ck_utilities_py_node.geometry import *
 from ck_ros_msgs_node.msg import Intake_Control, Led_Control
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from nav_msgs.msg import *
-from actions_node.game_specific_actions import HighConeAction, HighCubeAction, MidConeAction, MidCubeAction, HybridAction, GroundAction, InBotAction
+from actions_node.game_specific_actions import HighConeAction, HighCubeAction, MidConeAction, MidCubeAction, HybridAction, GroundAction, InBotAction, MoveArmAction
 from actions_node.ActionRunner import ActionRunner
 import numpy as np
 from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
@@ -234,7 +234,7 @@ def joystick_callback(msg: Joystick_Status):
 
     if operator_controller.getRisingEdgeButton(operator_params.high_node_button_id):
         if pinch_active:
-            arm_action = HighConeAction(reversed=facing_alliance != robot_status.get_alliance())
+            arm_action = MoveArmAction(MoveArmAction.HIGH_CUBE_NODE_BASE_ARM_POSITION, 0)
         else:
             arm_action = HighCubeAction(reversed=facing_alliance != robot_status.get_alliance())
         
