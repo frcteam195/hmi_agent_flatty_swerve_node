@@ -234,21 +234,25 @@ def joystick_callback(msg: Joystick_Status):
 
     if operator_controller.getRisingEdgeButton(operator_params.high_node_button_id):
         if pinch_active:
-            arm_action = MoveArmAction(MoveArmAction.HIGH_CUBE_NODE_BASE_ARM_POSITION, 0)
+            arm_action = MoveArmAction(MoveArmAction.HIGH_CONE_NODE_BASE_ARM_POSITION, MoveArmAction.HIGH_CONE_NODE_UPPER_ARM_POSITION)
         else:
-            arm_action = HighCubeAction(reversed=facing_alliance != robot_status.get_alliance())
+            arm_action = MoveArmAction(MoveArmAction.HIGH_CUBE_NODE_BASE_ARM_POSTION, MoveArmAction.HIGH_CUBE_NODE_UPPER_ARM_POSITION)
         
     if operator_controller.getRisingEdgeButton(operator_params.mid_node_button_id):
         if pinch_active:
-            arm_action = MidConeAction(reversed=facing_alliance != robot_status.get_alliance())
+            arm_action = MoveArmAction(MoveArmAction.MID_CONE_NODE_BASE_ARM_POSTION, MoveArmAction.MID_CONE_NODE_UPPER_ARM_POSITION)
         else:
-            arm_action = MidCubeAction(reversed=facing_alliance != robot_status.get_alliance())    
+            arm_action = MoveArmAction(MoveArmAction.MID_CUBE_NODE_BASE_ARM_POSTION, MoveArmAction.MID_CUBE_NODE_UPPER_ARM_POSITION) 
         
     if operator_controller.getRisingEdgeButton(operator_params.hybrid_node_button_id):
-        arm_action = HybridAction(reversed=facing_alliance != robot_status.get_alliance())
+        arm_action = MoveArmAction(MoveArmAction.HYBRID_NODE_BASE_ARM_POSTION, MoveArmAction.HYBRID_NODE_UPPER_ARM_POSITION)
  
     if operator_controller.getRisingEdgeButton(operator_params.in_bot_button_id):
-        arm_action = InBotAction()
+        arm_action = MoveArmAction(MoveArmAction.IN_BOT_NODE_BASE_ARM_POSTION, MoveArmAction.IN_BOT_NODE_UPPER_ARM_POSITION)
+
+    #if operator_controller.getRisingEdgeButton(operator_params.ground_button_id):
+        #arm_action = MoveArmAction(MoveArmAction.GROUND_NODE_BASE_ARM_POSTION, MoveArmAction.GROUND_NODE_UPPER_ARM_POSITION)
+
 
     # TODO: Which way ground go?
     
