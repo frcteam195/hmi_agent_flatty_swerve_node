@@ -1,24 +1,33 @@
-#!/usr/bin/env python3
+"""
+Class definition of the HMI agent node.
+"""
 
-import rospy
 from dataclasses import dataclass
-from ck_ros_base_msgs_node.msg import Joystick_Status, Robot_Status
-from ck_ros_msgs_node.msg import HMI_Signals
-from ck_utilities_py_node.joystick import Joystick
+
+import numpy as np
+import rospy
+
+from actions_node.ActionRunner import ActionRunner
+from actions_node.game_specific_actions import AutomatedActions
+from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control
+from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
+from nav_msgs import *
+
 from ck_utilities_py_node.ckmath import *
 from ck_utilities_py_node.geometry import *
-from ck_ros_msgs_node.msg import Intake_Control, Led_Control
-from frc_robot_utilities_py_node.frc_robot_utilities_py import *
-from nav_msgs.msg import *
-from actions_node.game_specific_actions import AutomatedActions
-from actions_node.ActionRunner import ActionRunner
-import numpy as np
-from frc_robot_utilities_py_node.RobotStatusHelperPy import RobotStatusHelperPy, Alliance, RobotMode, BufferedROSMsgHandlerPy
-from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
+from ck_utilities_py_node.joystick import Joystick
 from ck_utilities_py_node.rosparam_helper import load_parameter_class
+from frc_robot_utilities_py_node.frc_robot_utilities_py import robot_status, register_for_robot_updates
+from frc_robot_utilities_py_node.RobotStatusHelperPy import Alliance, BufferedROSMsgHandlerPy
+
+from ck_ros_base_msgs_node.msg import Joystick_Status
+
 
 @dataclass
-class DriveParams:
+class DriverParams:
+    """
+    Driver parameters. Must match the configuration YAML loaded.
+    """
     drive_fwd_back_axis_id: int = -1
     drive_fwd_back_axis_inverted: bool = False
 
@@ -36,8 +45,12 @@ class DriveParams:
     driver_intake_button_id: int = -1
     driver_outtake_button_id: int = -1
 
+
 @dataclass
 class OperatorParams:
+    """
+    Operator parameters. Must match the configuration YAML loaded.
+    """
     outtake_axis_id: int = -1
     intake_axis_id: int = -1
     activation_threshold: float = 0
@@ -54,250 +67,215 @@ class OperatorParams:
     led_control_pov_id: int = -1
 
 
+class HmiAgentNode():
+    """
+    The HMI agent node.
+    """
 
-action_runner = ActionRunner()
+    def __init__(self) -> None:
+        register_for_robot_updates()
 
-drive_params = DriveParams()
-operator_params = OperatorParams()
+        self.action_runner = ActionRunner()
 
-hmi_pub = None
-odom_pub = None
-odometry_subscriber = None
-intake_pub = None
-led_control_pub = None
+        self.driver_joystick = Joystick(0)
+        self.operator_controller = Joystick(1)
 
-led_timer = 0
-party_time = True
-led_control_msg = Led_Control()
+        self.driver_params = DriverParams()
+        self.operator_params = OperatorParams()
 
-pinch_active = False
-recent_heading = 0
+        load_parameter_class(self.driver_params)
+        load_parameter_class(self.operator_params)
 
-drive_joystick = Joystick(0)
-operator_controller = Joystick(1)
+        self.drivetrain_orientation = HMI_Signals.FIELD_CENTRIC
 
-drivetrain_orientation = HMI_Signals.ROBOT_ORIENTED
+        self.led_control_message = Led_Control()
+        self.led_timer = 0
+        self.party_time = False
 
-def process_leds():
-    global led_control_msg
-    global led_control_pub
-    global led_timer
-    global operator_controller
-    global operator_params
-    global party_time
-    global robot_status
- 
+        self.heading = 0.0
 
-    led_control_msg.control_mode = Led_Control.ANIMATE
-    led_control_msg.number_leds = 8
-    
-    if not robot_status.is_connected():
-        led_control_msg.animation = Led_Control.STROBE
-        led_control_msg.speed = 0.3
-        led_control_msg.brightness = 0.5
-        led_control_msg.red = 255
-        led_control_msg.green = 0
-        led_control_msg.blue = 0
+        self.pinch_active = False
 
-    else:
-        if operator_controller.getPOV(operator_params.led_control_pov_id) == 270:
-            led_timer = rospy.get_time()
-            led_control_msg.animation = Led_Control.STROBE
-            led_control_msg.speed = 0.1
-            led_control_msg.brightness = 0.5
-            led_control_msg.red = 255
-            led_control_msg.green = 255
-            led_control_msg.blue = 0
+        self.hmi_publisher = rospy.Publisher(name="/HMISignals", data_class=HMI_Signals, queue_size=10, tcp_nodelay=True)
+        self.odometry_publisher = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
+        self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
+        self.led_control_publisher = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
 
-        if operator_controller.getPOV(operator_params.led_control_pov_id) == 90:
-            led_timer = rospy.get_time()
-            led_control_msg.animation = Led_Control.STROBE
-            led_control_msg.speed = 0.1
-            led_control_msg.brightness = 0.5
-            led_control_msg.red = 255
-            led_control_msg.green = 0
-            led_control_msg.blue = 255
-        
-        if operator_controller.getRisingEdgeButton(operator_params.party_mode_button_id):
-            party_time = not party_time
-            
-        if rospy.get_time() - led_timer > 3:
-            if not party_time:
-                led_control_msg.animation = Led_Control.LARSON
-                led_control_msg.speed = 0.5
-                led_control_msg.brightness = 0.5
-                led_control_msg.red = 0
-                led_control_msg.green = 255
-                led_control_msg.blue = 0
-        
-            else:
-                led_control_msg.animation = Led_Control.RAINBOW
-                led_control_msg.speed = 1
-                led_control_msg.brightness = 1
+        self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
+        self.odometry_subscriber.register_for_updates("odometry/filtered")
 
-    led_control_pub.publish(led_control_msg)
+        rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status,
+                         callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
+        rospy.spin()
 
-def process_intake_control():
-    global drive_joystick
-    global drive_params
-    global operator_controller
-    global operator_params
-    global pinch_active
-    global action_runner
+    def joystick_callback(self, message: Joystick_Status):
+        """
+        Joystick callback function. This runs everytime a new joystick status message is received.
+        """
+        global robot_status
 
-    intake_control = Intake_Control()
+        Joystick.update(message)
 
-    if drive_joystick.getButton(drive_params.driver_unpinch_button_id) or operator_controller.getButton(operator_params.operator_unpinch_button_id):
-        pinch_active = False
-    elif drive_joystick.getButton(drive_params.driver_pinch_button_id) or operator_controller.getButton(operator_params.operator_pinch_button_id):
-        pinch_active = True
+        hmi_update_message = HMI_Signals()
+        hmi_update_message.drivetrain_brake = True
 
-    intake_control.pincher_solenoid_on = pinch_active
+        #######################################################################
+        ###                         DRIVER CONTROLS                         ###
+        #######################################################################
+        invert_axis_fwd_back = -1 if self.driver_params.drive_fwd_back_axis_inverted else 1
+        invert_axis_left_right = -1 if self.driver_params.drive_left_right_axis_inverted else 1
 
-    if drive_joystick.getButton(drive_params.driver_intake_button_id) or operator_controller.getRawAxis(operator_params.intake_axis_id) > operator_params.activation_threshold:
-        intake_control.rollers_intake = True
-        intake_control.rollers_outtake = False
-    elif drive_joystick.getButton(drive_params.driver_outtake_button_id) or operator_controller.getRawAxis(operator_params.outtake_axis_id) > operator_params.activation_threshold:
-        intake_control.rollers_intake = False 
-        intake_control.rollers_outtake = True 
-    
-    intake_pub.publish(intake_control)
+        fwd_back_value = self.driver_joystick.getFilteredAxis(self.driver_params.drive_fwd_back_axis_id, self.driver_params.drive_axis_deadband)
+        hmi_update_message.drivetrain_fwd_back = invert_axis_fwd_back * fwd_back_value
 
-def joystick_callback(msg: Joystick_Status):
-    global drivetrain_orientation
-    global hmi_pub
-    global odometry_subscriber
-    global recent_heading
+        left_right_value = self.driver_joystick.getFilteredAxis(self.driver_params.drive_left_right_axis_id, self.driver_params.drive_axis_deadband)
+        hmi_update_message.drivetrain_left_right = invert_axis_left_right * left_right_value
 
-    global robot_status
+        x = hmi_update_message.drivetrain_fwd_back
+        y = hmi_update_message.drivetrain_left_right
 
-    global drive_joystick
-    global operator_controller
+        invert_axis_z = -1 if self.driver_params.drive_z_axis_inverted else 1
+        z = invert_axis_z * self.driver_joystick.getFilteredAxis(
+            self.driver_params.drive_z_axis_id, self.driver_params.drive_z_axis_deadband)
 
-    global drive_params
-    global operator_params
-    global action_runner
+        r = hypotenuse(x, y)
+        theta = polar_angle_rad(x, y)
 
-    global pinch_active
-    
-    Joystick.update(msg)
-
-    hmi_update_msg = HMI_Signals()
-
-    hmi_update_msg.drivetrain_brake = True
-
-    invert_axis_fwd_back = -1 if drive_params.drive_fwd_back_axis_inverted else 1
-    invert_axis_left_right = -1 if drive_params.drive_left_right_axis_inverted else 1
-
-    hmi_update_msg.drivetrain_fwd_back = invert_axis_fwd_back * drive_joystick.getFilteredAxis(drive_params.drive_fwd_back_axis_id, drive_params.drive_axis_deadband)
-
-    hmi_update_msg.drivetrain_left_right = invert_axis_left_right * drive_joystick.getFilteredAxis(drive_params.drive_left_right_axis_id, drive_params.drive_axis_deadband)
-
-    x = hmi_update_msg.drivetrain_fwd_back
-    y = hmi_update_msg.drivetrain_left_right
-
-    invert_axis_z = -1 if drive_params.drive_z_axis_inverted else 1
-    z = invert_axis_z * drive_joystick.getFilteredAxis(drive_params.drive_z_axis_id, drive_params.drive_z_axis_deadband)
-
-    r = hypotenuse(x, y)
-    theta = polar_angle_rad(x, y)
-
-    z = np.sign(z) * pow(z, 2)
-    active_theta = theta
-    if (r > drive_params.drive_axis_deadband):
+        z = np.sign(z) * pow(z, 2)
         active_theta = theta
+        if r > self.driver_params.drive_axis_deadband:
+            active_theta = theta
 
-    hmi_update_msg.drivetrain_swerve_direction = active_theta
-    hmi_update_msg.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
-    hmi_update_msg.drivetrain_swerve_percent_angular_rot = z
+        hmi_update_message.drivetrain_swerve_direction = active_theta
+        hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
+        hmi_update_message.drivetrain_swerve_percent_angular_rot = z
 
-    hmi_update_msg.drivetrain_orientation = drivetrain_orientation
+        # TODO: Update orientation button.
+        hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
-    process_leds()
-    process_intake_control()
+        if self.driver_joystick.getRisingEdgeButton(self.driver_params.driver_outtake_button_id):
+            self.odometry_publisher.publish(get_reset_odom_msg())
 
-    if odometry_subscriber.get() is not None:
-        odometry_msg = odometry_subscriber.get()
-        rotation = Rotation(odometry_msg.pose.pose.orientation)
-        yaw = rotation.yaw
-        yaw = normalize_to_2_pi(yaw)
-        recent_heading = math.degrees(yaw)
+        #######################################################################
+        ###                        OPERATOR CONTROLS                        ###
+        #######################################################################
+        self.process_intake_control()
+        self.process_leds()
 
-    facing_alliance = Alliance.RED if 90 < recent_heading < 270 else Alliance.BLUE
+        # Determine the alliance station the robot is facing.
+        if self.odometry_subscriber.get() is not None:
+            odometry_message = self.odometry_subscriber.get()
+            rotation = Rotation(odometry_message.pose.pose.orientation)
+            yaw = rotation.yaw
+            yaw = normalize_to_2_pi(yaw)
+            self.heading = math.degrees(yaw)
 
+        target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
 
-    ################################################################################
-    ###                         CONTROL MAPPINGS                                 ###
-    ################################################################################
+        ################################################################################
+        ###                         CONTROL MAPPINGS                                 ###
+        ################################################################################
 
-    arm_action = None
-    reversed = facing_alliance != robot_status.get_alliance()
+        arm_action = None
+        reverse_arm = target_alliance != robot_status.get_alliance()
 
-    if operator_controller.getRisingEdgeButton(operator_params.high_node_button_id):
-        if pinch_active:
-            arm_action = AutomatedActions.HighConeAction(reversed)
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.high_node_button_id):
+            if self.pinch_active:
+                arm_action = AutomatedActions.HighConeAction(reverse_arm)
+            else:
+                arm_action = AutomatedActions.HighCubeAction(reverse_arm)
+
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.mid_node_button_id):
+            if self.pinch_active:
+                arm_action = AutomatedActions.MidConeAction(reverse_arm)
+            else:
+                arm_action = AutomatedActions.MidCubeAction(reverse_arm)
+
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.hybrid_node_button_id):
+            arm_action = AutomatedActions.HybridAction(reverse_arm)
+
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.in_bot_button_id):
+            arm_action = AutomatedActions.InRobotAction()
+
+        if arm_action is not None:
+            self.action_runner.start_action(arm_action)
+
+        self.hmi_publisher.publish(hmi_update_message)
+        self.action_runner.loop(robot_status.get_mode())
+
+    def process_intake_control(self):
+        """
+        Handles all intake control.
+        """
+        intake_control = Intake_Control()
+
+        if self.operator_controller.getButton(self.operator_params.operator_unpinch_button_id):
+            self.pinch_active = False
+        elif self.operator_controller.getButton(self.operator_params.operator_pinch_button_id):
+            self.pinch_active = True
+
+        intake_control.pincher_solenoid_on = self.pinch_active
+
+        if self.operator_controller.getRawAxis(self.operator_params.intake_axis_id) > self.operator_params.activation_threshold:
+            intake_control.rollers_intake = True
+            intake_control.rollers_outtake = False
+        elif self.operator_controller.getRawAxis(self.operator_params.outtake_axis_id) > self.operator_params.activation_threshold:
+            intake_control.rollers_intake = False
+            intake_control.rollers_outtake = True
+
+        self.intake_publisher.publish(intake_control)
+
+    def process_leds(self):
+        """
+        Handles all the LED changes.
+        """
+        global robot_status
+
+        self.led_control_message.control_mode = Led_Control.ANIMATE
+        self.led_control_message.number_leds = 8
+
+        if not robot_status.is_connected():
+            self.led_control_message.animation = Led_Control.STROBE
+            self.led_control_message.speed = 0.3
+            self.led_control_message.brightness = 0.5
+            self.led_control_message.red = 255
+            self.led_control_message.green = 0
+            self.led_control_message.blue = 0
+
         else:
-            arm_action = AutomatedActions.HighCubeAction(reversed)
-        
-    if operator_controller.getRisingEdgeButton(operator_params.mid_node_button_id):
-        if pinch_active:
-            arm_action = AutomatedActions.MidConeAction(reversed)
-        else:
-            arm_action = AutomatedActions.MidCubeAction(reversed)
-        
-    if operator_controller.getRisingEdgeButton(operator_params.hybrid_node_button_id):
-        arm_action = AutomatedActions.HybridAction(reversed)
- 
-    if operator_controller.getRisingEdgeButton(operator_params.in_bot_button_id):
-        arm_action = AutomatedActions.InRobotAction()
+            if self.operator_controller.getPOV(self.operator_params.led_control_pov_id) == 270:
+                self.led_timer = rospy.get_time()
+                self.led_control_message.animation = Led_Control.STROBE
+                self.led_control_message.speed = 0.1
+                self.led_control_message.brightness = 0.5
+                self.led_control_message.red = 255
+                self.led_control_message.green = 255
+                self.led_control_message.blue = 0
 
-    #if operator_controller.getRisingEdgeButton(operator_params.ground_button_id):
-        #arm_action = AutomatedActions.GroundAction(reversed)
+            if self.operator_controller.getPOV(self.operator_params.led_control_pov_id) == 90:
+                self.led_timer = rospy.get_time()
+                self.led_control_message.animation = Led_Control.STROBE
+                self.led_control_message.speed = 0.1
+                self.led_control_message.brightness = 0.5
+                self.led_control_message.red = 255
+                self.led_control_message.green = 0
+                self.led_control_message.blue = 255
 
+            if self.operator_controller.getRisingEdgeButton(self.operator_params.party_mode_button_id):
+                self.party_time = not self.party_time
 
-    # TODO: Which way ground go?
-    
-    if arm_action is not None:
-        action_runner.start_action(arm_action)
+            if rospy.get_time() - self.led_timer > 3:
+                if not self.party_time:
+                    self.led_control_message.animation = Led_Control.LARSON
+                    self.led_control_message.speed = 0.5
+                    self.led_control_message.brightness = 0.5
+                    self.led_control_message.red = 0
+                    self.led_control_message.green = 255
+                    self.led_control_message.blue = 0
 
-    ################################################################################
-    ###                         END CONTROL MAPPINGS                             ###
-    ################################################################################
+                else:
+                    self.led_control_message.animation = Led_Control.RAINBOW
+                    self.led_control_message.speed = 1
+                    self.led_control_message.brightness = 1
 
-
-
-    if drive_joystick.getRisingEdgeButton(drive_params.driver_outtake_button_id):
-        odom_pub.publish(get_reset_odom_msg())
-
-    hmi_pub.publish(hmi_update_msg)
-    action_runner.loop(robot_status.get_mode())
-
-
-def init_params():
-    global drive_params
-    global operator_params
-
-
-    load_parameter_class(drive_params)
-    load_parameter_class(operator_params)
-
-def ros_main(node_name):
-    global hmi_pub
-    global odom_pub
-    global intake_pub
-    global led_control_pub
-    global odometry_subscriber
-
-    rospy.init_node(node_name)
-    init_params()
-
-    register_for_robot_updates()
-
-    hmi_pub = rospy.Publisher(name="/HMISignals", data_class=HMI_Signals, queue_size=10, tcp_nodelay=True)
-    odom_pub = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
-    intake_pub = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
-    led_control_pub = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
-    odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
-    odometry_subscriber.register_for_updates("odometry/filtered")
-    rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=joystick_callback, queue_size=1, tcp_nodelay=True)
-    rospy.spin()
+        self.led_control_publisher.publish(self.led_control_message)
