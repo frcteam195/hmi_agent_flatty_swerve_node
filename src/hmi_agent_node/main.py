@@ -11,7 +11,7 @@ from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
 from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control
 from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
-from nav_msgs import *
+from nav_msgs import Odometry
 
 from ck_utilities_py_node.ckmath import *
 from ck_utilities_py_node.geometry import *
@@ -40,10 +40,9 @@ class DriverParams:
     drive_axis_deadband: float = 0.05
     drive_z_axis_deadband: float = 0.05
 
-    driver_unpinch_button_id: int = -1
-    driver_pinch_button_id: int = -1
-    driver_intake_button_id: int = -1
-    driver_outtake_button_id: int = -1
+    reset_odometry_button_id: int = -1
+    robot_orient_button_id: int = -1
+    field_centric_button_id: int = -1
 
 
 @dataclass
@@ -151,9 +150,14 @@ class HmiAgentNode():
         hmi_update_message.drivetrain_swerve_percent_angular_rot = z
 
         # TODO: Update orientation button.
+        if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
+            self.drivetrain_orientation = HMI_Signals.ROBOT_ORIENTED
+        elif self.driver_joystick.getButton(self.driver_params.field_centric_button_id):
+            self.drivetrain_orientation = HMI_Signals.FIELD_CENTRIC
+
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
-        if self.driver_joystick.getRisingEdgeButton(self.driver_params.driver_outtake_button_id):
+        if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
             self.odometry_publisher.publish(get_reset_odom_msg())
 
         #######################################################################
@@ -168,7 +172,7 @@ class HmiAgentNode():
             rotation = Rotation(odometry_message.pose.pose.orientation)
             yaw = rotation.yaw
             yaw = normalize_to_2_pi(yaw)
-            self.heading = math.degrees(yaw)
+            self.heading = np.degrees(yaw)
 
         target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
 
