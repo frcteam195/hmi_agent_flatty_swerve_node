@@ -11,7 +11,7 @@ from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
 from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control
 from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
-from nav_msgs import Odometry
+from nav_msgs.msg import Odometry
 
 from ck_utilities_py_node.ckmath import *
 from ck_utilities_py_node.geometry import *
