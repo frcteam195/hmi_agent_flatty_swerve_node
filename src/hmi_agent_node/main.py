@@ -103,16 +103,13 @@ class HmiAgentNode():
         self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
         self.odometry_subscriber.register_for_updates("odometry/filtered")
 
-        rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status,
-                         callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
+        rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
         rospy.spin()
 
     def joystick_callback(self, message: Joystick_Status):
         """
         Joystick callback function. This runs everytime a new joystick status message is received.
         """
-        global robot_status
-
         Joystick.update(message)
 
         hmi_update_message = HMI_Signals()
@@ -134,8 +131,7 @@ class HmiAgentNode():
         y = hmi_update_message.drivetrain_left_right
 
         invert_axis_z = -1 if self.driver_params.drive_z_axis_inverted else 1
-        z = invert_axis_z * self.driver_joystick.getFilteredAxis(
-            self.driver_params.drive_z_axis_id, self.driver_params.drive_z_axis_deadband)
+        z = invert_axis_z * self.driver_joystick.getFilteredAxis(self.driver_params.drive_z_axis_id, self.driver_params.drive_z_axis_deadband)
 
         r = hypotenuse(x, y)
         theta = polar_angle_rad(x, y)
@@ -149,7 +145,6 @@ class HmiAgentNode():
         hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
         hmi_update_message.drivetrain_swerve_percent_angular_rot = z
 
-        # TODO: Update orientation button.
         if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
             self.drivetrain_orientation = HMI_Signals.ROBOT_ORIENTED
         elif self.driver_joystick.getButton(self.driver_params.field_centric_button_id):
@@ -233,8 +228,6 @@ class HmiAgentNode():
         """
         Handles all the LED changes.
         """
-        global robot_status
-
         self.led_control_message.control_mode = Led_Control.ANIMATE
         self.led_control_message.number_leds = 8
 
