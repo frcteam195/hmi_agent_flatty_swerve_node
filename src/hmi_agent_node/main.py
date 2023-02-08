@@ -171,7 +171,8 @@ class HmiAgentNode():
             self.heading = np.degrees(yaw)
 
         target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
-
+        hmi_update_message.drivetrain_heading = self.heading
+        
         ################################################################################
         ###                         CONTROL MAPPINGS                                 ###
         ################################################################################
