@@ -17,7 +17,7 @@ from ck_utilities_py_node.ckmath import *
 from ck_utilities_py_node.geometry import *
 from ck_utilities_py_node.joystick import Joystick
 from ck_utilities_py_node.rosparam_helper import load_parameter_class
-from frc_robot_utilities_py_node.frc_robot_utilities_py import robot_status, register_for_robot_updates
+from frc_robot_utilities_py_node.frc_robot_utilities_py import robot_status, register_for_robot_updates, reset_robot_pose
 from frc_robot_utilities_py_node.RobotStatusHelperPy import Alliance, BufferedROSMsgHandlerPy
 
 from ck_ros_base_msgs_node.msg import Joystick_Status
@@ -154,7 +154,8 @@ class HmiAgentNode():
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
         if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
-            self.odometry_publisher.publish(get_reset_odom_msg())
+            # self.odometry_publisher.publish(get_reset_odom_msg())
+            reset_robot_pose()
 
         #######################################################################
         ###                        OPERATOR CONTROLS                        ###
@@ -171,7 +172,8 @@ class HmiAgentNode():
             self.heading = np.degrees(yaw)
 
         target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
-
+        hmi_update_message.drivetrain_heading = self.heading
+        
         ################################################################################
         ###                         CONTROL MAPPINGS                                 ###
         ################################################################################
