@@ -62,6 +62,7 @@ class OperatorParams:
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
+    wrist_button_id: int = -1
 
     led_control_pov_id: int = -1
 
@@ -196,6 +197,9 @@ class HmiAgentNode():
         if self.operator_controller.getRisingEdgeButton(self.operator_params.in_bot_button_id):
             arm_action = AutomatedActions.InRobotAction()
 
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_button_id):
+            pass            #arm_action = AutomatedActions.WristAction(math.radians(90))
+
         if arm_action is not None:
             self.action_runner.start_action(arm_action)
 
@@ -207,6 +211,7 @@ class HmiAgentNode():
         Handles all intake control.
         """
         intake_control = Intake_Control()
+        intake_action = None 
 
         if self.operator_controller.getButton(self.operator_params.operator_unpinch_button_id):
             self.pinch_active = False
@@ -222,6 +227,9 @@ class HmiAgentNode():
             intake_control.rollers_intake = False
             intake_control.rollers_outtake = True
 
+        if intake_action is not None:
+            self.action_runner.start_action(intake_action)
+        
         self.intake_publisher.publish(intake_control)
 
     def process_leds(self):
