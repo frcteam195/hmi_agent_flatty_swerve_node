@@ -62,7 +62,9 @@ class OperatorParams:
     party_mode_button_id: int = -1
     operator_pinch_button_id: int = -1
     operator_unpinch_button_id: int = -1
-    wrist_button_id: int = -1
+    wrist_left_90_button_id: int = -1
+    wrist_straight_button_id: int = -1
+    wrist_left_180_button_id: int = -1
 
     led_control_pov_id: int = -1
 
@@ -98,7 +100,7 @@ class HmiAgentNode():
 
         self.hmi_publisher = rospy.Publisher(name="/HMISignals", data_class=HMI_Signals, queue_size=10, tcp_nodelay=True)
         self.odometry_publisher = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
-        # self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
+        self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
         self.led_control_publisher = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
 
         self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
@@ -199,8 +201,14 @@ class HmiAgentNode():
         if self.operator_controller.getRisingEdgeButton(self.operator_params.in_bot_button_id):
             arm_action = AutomatedActions.InRobotAction()
 
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_button_id):
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_90_button_id):
             arm_action = AutomatedActions.WristLeft90()
+
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_straight_button_id):
+            arm_action = AutomatedActions.WristStraight()
+
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_180_button_id):
+            arm_action = AutomatedActions.WristLeft180()
 
         if arm_action is not None:
             self.action_runner.start_action(arm_action)
@@ -213,27 +221,27 @@ class HmiAgentNode():
         Handles all intake control.
         """
         pass
-        # intake_control = Intake_Control()
-        # intake_action = None 
+        intake_control = Intake_Control()
+        intake_action = None 
 
-        # if self.operator_controller.getButton(self.operator_params.operator_unpinch_button_id):
-        #     self.pinch_active = False
-        # elif self.operator_controller.getButton(self.operator_params.operator_pinch_button_id):
-        #     self.pinch_active = True
+        if self.operator_controller.getButton(self.operator_params.operator_unpinch_button_id):
+             self.pinch_active = False
+        elif self.operator_controller.getButton(self.operator_params.operator_pinch_button_id):
+             self.pinch_active = True
 
-        # intake_control.pincher_solenoid_on = self.pinch_active
+        intake_control.pincher_solenoid_on = self.pinch_active
 
-        # if self.operator_controller.getRawAxis(self.operator_params.intake_axis_id) > self.operator_params.activation_threshold:
-        #     intake_control.rollers_intake = True
-        #     intake_control.rollers_outtake = False
-        # elif self.operator_controller.getRawAxis(self.operator_params.outtake_axis_id) > self.operator_params.activation_threshold:
-        #     intake_control.rollers_intake = False
-        #     intake_control.rollers_outtake = True
+        if self.operator_controller.getRawAxis(self.operator_params.intake_axis_id) > self.operator_params.activation_threshold:
+             intake_control.rollers_intake = True
+             intake_control.rollers_outtake = False
+        elif self.operator_controller.getRawAxis(self.operator_params.outtake_axis_id) > self.operator_params.activation_threshold:
+             intake_control.rollers_intake = False
+             intake_control.rollers_outtake = True
 
-        # if intake_action is not None:
-        #     self.action_runner.start_action(intake_action)
+        if intake_action is not None:
+            self.action_runner.start_action(intake_action)
         
-        # self.intake_publisher.publish(intake_control)
+        self.intake_publisher.publish(intake_control)
 
     def process_leds(self):
         """
