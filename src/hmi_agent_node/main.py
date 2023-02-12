@@ -9,7 +9,7 @@ import rospy
 
 from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
-from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control
+from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control, Arm_Goal
 from nav_msgs.msg import Odometry
 
 from ck_utilities_py_node.ckmath import *
@@ -102,6 +102,10 @@ class HmiAgentNode():
         self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
         self.led_control_publisher = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
 
+        self.arm_goal_publisher = rospy.Publisher(name="/ArmGoal", data_class=Arm_Goal, queue_size=10, tcp_nodelay=True)
+        self.arm_goal = Arm_Goal()
+        self.arm_goal.goal = Arm_Goal.HOME
+
         self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
         self.odometry_subscriber.register_for_updates("odometry/filtered")
 
@@ -181,35 +185,46 @@ class HmiAgentNode():
         arm_action = None
         reverse_arm = target_alliance != robot_status.get_alliance()
 
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.high_node_button_id):
-            if self.pinch_active:
-                arm_action = AutomatedActions.HighConeAction(reverse_arm)
-            else:
-                arm_action = AutomatedActions.HighCubeAction(reverse_arm)
-
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.mid_node_button_id):
-            if self.pinch_active:
-                arm_action = AutomatedActions.MidConeAction(reverse_arm)
-            else:
-                arm_action = AutomatedActions.MidCubeAction(reverse_arm)
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.ground_intake_button_id):
+            self.arm_goal.goal = Arm_Goal.HOME
 
         if self.operator_controller.getRisingEdgeButton(self.operator_params.hybrid_node_button_id):
-            arm_action = AutomatedActions.HybridAction(reverse_arm)
-
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.in_bot_button_id):
-            arm_action = AutomatedActions.InRobotAction()
-
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_90_button_id):
-            arm_action = AutomatedActions.WristLeft90()
-
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_straight_button_id):
-            arm_action = AutomatedActions.WristStraight()
+            self.arm_goal.goal = Arm_Goal.SHELF_PICKUP_FRONT
 
         if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_180_button_id):
-            arm_action = AutomatedActions.WristLeft180()
+            self.arm_goal.goal = Arm_Goal.HIGH_CUBE_FRONT
 
-        if arm_action is not None:
-            self.action_runner.start_action(arm_action)
+        self.arm_goal_publisher.publish(self.arm_goal)
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.high_node_button_id):
+        #     if self.pinch_active:
+        #         arm_action = AutomatedActions.HighConeAction(reverse_arm)
+        #     else:
+        #         arm_action = AutomatedActions.HighCubeAction(reverse_arm)
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.mid_node_button_id):
+        #     if self.pinch_active:
+        #         arm_action = AutomatedActions.MidConeAction(reverse_arm)
+        #     else:
+        #         arm_action = AutomatedActions.MidCubeAction(reverse_arm)
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.hybrid_node_button_id):
+        #     arm_action = AutomatedActions.HybridAction(reverse_arm)
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.in_bot_button_id):
+        #     arm_action = AutomatedActions.InRobotAction()
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_90_button_id):
+        #     arm_action = AutomatedActions.WristLeft90()
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_straight_button_id):
+        #     arm_action = AutomatedActions.WristStraight()
+
+        # if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_180_button_id):
+        #     arm_action = AutomatedActions.WristLeft180()
+
+        # if arm_action is not None:
+        #     self.action_runner.start_action(arm_action)
 
         self.hmi_publisher.publish(hmi_update_message)
         self.action_runner.loop(robot_status.get_mode())
