@@ -10,7 +10,6 @@ import rospy
 from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
 from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control
-from hmi_agent_node.reset_odom_msg import get_reset_odom_msg
 from nav_msgs.msg import Odometry
 
 from ck_utilities_py_node.ckmath import *
@@ -156,7 +155,6 @@ class HmiAgentNode():
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
         if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
-            # self.odometry_publisher.publish(get_reset_odom_msg())
             reset_robot_pose()
 
         #######################################################################
@@ -175,7 +173,7 @@ class HmiAgentNode():
 
         target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
         hmi_update_message.drivetrain_heading = self.heading
-        
+
         ################################################################################
         ###                         CONTROL MAPPINGS                                 ###
         ################################################################################
@@ -220,27 +218,26 @@ class HmiAgentNode():
         """
         Handles all intake control.
         """
-        pass
         intake_control = Intake_Control()
-        intake_action = None 
+        intake_action = None
 
         if self.operator_controller.getButton(self.operator_params.operator_unpinch_button_id):
-             self.pinch_active = False
+            self.pinch_active = False
         elif self.operator_controller.getButton(self.operator_params.operator_pinch_button_id):
-             self.pinch_active = True
+            self.pinch_active = True
 
         intake_control.pincher_solenoid_on = self.pinch_active
 
         if self.operator_controller.getRawAxis(self.operator_params.intake_axis_id) > self.operator_params.activation_threshold:
-             intake_control.rollers_intake = True
-             intake_control.rollers_outtake = False
+            intake_control.rollers_intake = True
+            intake_control.rollers_outtake = False
         elif self.operator_controller.getRawAxis(self.operator_params.outtake_axis_id) > self.operator_params.activation_threshold:
-             intake_control.rollers_intake = False
-             intake_control.rollers_outtake = True
+            intake_control.rollers_intake = False
+            intake_control.rollers_outtake = True
 
         if intake_action is not None:
             self.action_runner.start_action(intake_action)
-        
+
         self.intake_publisher.publish(intake_control)
 
     def process_leds(self):
