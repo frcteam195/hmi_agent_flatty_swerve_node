@@ -194,6 +194,9 @@ class HmiAgentNode():
         if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_180_button_id):
             self.arm_goal.goal = Arm_Goal.HIGH_CUBE_FRONT
 
+        if self.operator_controller.getRisingEdgeButton(self.operator_params.high_node_button_id):
+            self.arm_goal.goal = Arm_Goal.HIGH_CUBE_BACK
+
         self.arm_goal_publisher.publish(self.arm_goal)
 
         # if self.operator_controller.getRisingEdgeButton(self.operator_params.high_node_button_id):
