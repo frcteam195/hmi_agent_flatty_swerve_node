@@ -68,6 +68,35 @@ class OperatorParams:
     led_control_pov_id: int = -1
 
 
+@dataclass
+class OperatorSplitParams:
+    # Button Box
+    home_button_id: int = -1
+    shelf_button_id: int = -1
+    low_button_id: int = -1
+
+    high_cone_button_id: int = -1
+    mid_cone_button_id: int = -1
+    pickup_cone_button_id: int = -1
+    pickup_dead_cone_button_id:  int = -1
+
+    high_cube_button_id: int = -1
+    mid_cube_button_id: int = -1
+    pickup_cube_button_id: int = -1
+
+    # Joystick
+    intake_in_button_id: int = -1
+    intake_out_button_id: int = -1
+
+    intake_close_button_id: int = -1
+    intake_open_button_id: int = -1
+
+    joy_pickup_cube_button_id: int = -1
+    joy_pickup_dead_cone_button_id: int = -1
+    
+    led_control_pov_id: int = -1
+
+
 class HmiAgentNode():
     """
     The HMI agent node.
@@ -79,10 +108,14 @@ class HmiAgentNode():
         self.action_runner = ActionRunner()
 
         self.driver_joystick = Joystick(0)
-        self.operator_controller = Joystick(1)
+        # self.operator_controller = Joystick(1)
+
+        self.operator_button_box = Joystick(1)
+        self.operator_joystick = Joystick(2)
 
         self.driver_params = DriverParams()
-        self.operator_params = OperatorParams()
+        # self.operator_params = OperatorParams()
+        self.operator_params = OperatorSplitParams()
 
         load_parameter_class(self.driver_params)
         load_parameter_class(self.operator_params)
@@ -185,17 +218,37 @@ class HmiAgentNode():
         arm_action = None
         reverse_arm = target_alliance != robot_status.get_alliance()
 
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.ground_intake_button_id):
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.home_button_id):
             self.arm_goal.goal = Arm_Goal.HOME
 
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.hybrid_node_button_id):
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.shelf_button_id):
             self.arm_goal.goal = Arm_Goal.SHELF_PICKUP_FRONT
 
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.wrist_left_180_button_id):
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cone_button_id):
+            self.arm_goal.goal = Arm_Goal.HIGH_CONE_FRONT
+
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cone_button_id):
+            self.arm_goal.goal = Arm_Goal.MID_CONE_FRONT
+
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cone_button_id):
+            self.arm_goal.goal = Arm_Goal.GROUND_CONE_FRONT
+
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_dead_cone_button_id) \
+                or self.operator_joystick.getRisingEdgeButton(self.operator_params.joy_pickup_dead_cone_button_id):
+            self.arm_goal.goal = Arm_Goal.GROUND_DEAD_CONE_FRONT
+
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cube_button_id):
             self.arm_goal.goal = Arm_Goal.HIGH_CUBE_FRONT
 
-        if self.operator_controller.getRisingEdgeButton(self.operator_params.high_node_button_id):
-            self.arm_goal.goal = Arm_Goal.HIGH_CUBE_BACK
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cube_button_id):
+            self.arm_goal.goal = Arm_Goal.MID_CUBE_FRONT
+        
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cube_button_id) \
+                or self.operator_joystick.getRisingEdgeButton(self.operator_params.joy_pickup_cube_button_id):
+            self.arm_goal.goal = Arm_Goal.GROUND_CUBE_FRONT
+
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.low_button_id):
+            self.arm_goal.goal = Arm_Goal.LOW_SCORE_FRONT
 
         self.arm_goal_publisher.publish(self.arm_goal)
 
@@ -239,17 +292,17 @@ class HmiAgentNode():
         intake_control = Intake_Control()
         intake_action = None
 
-        if self.operator_controller.getButton(self.operator_params.operator_unpinch_button_id):
-            self.pinch_active = False
-        elif self.operator_controller.getButton(self.operator_params.operator_pinch_button_id):
+        if self.operator_joystick.getButton(self.operator_params.intake_open_button_id):
             self.pinch_active = True
+        elif self.operator_joystick.getButton(self.operator_params.intake_close_button_id):
+            self.pinch_active = False
 
         intake_control.pincher_solenoid_on = self.pinch_active
 
-        if self.operator_controller.getRawAxis(self.operator_params.intake_axis_id) > self.operator_params.activation_threshold:
+        if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
             intake_control.rollers_intake = True
             intake_control.rollers_outtake = False
-        elif self.operator_controller.getRawAxis(self.operator_params.outtake_axis_id) > self.operator_params.activation_threshold:
+        elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
             intake_control.rollers_intake = False
             intake_control.rollers_outtake = True
 
@@ -274,7 +327,7 @@ class HmiAgentNode():
             self.led_control_message.blue = 0
 
         else:
-            if self.operator_controller.getPOV(self.operator_params.led_control_pov_id) == 270:
+            if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 270:
                 self.led_timer = rospy.get_time()
                 self.led_control_message.animation = Led_Control.STROBE
                 self.led_control_message.speed = 0.1
@@ -283,7 +336,7 @@ class HmiAgentNode():
                 self.led_control_message.green = 255
                 self.led_control_message.blue = 0
 
-            if self.operator_controller.getPOV(self.operator_params.led_control_pov_id) == 90:
+            if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 90:
                 self.led_timer = rospy.get_time()
                 self.led_control_message.animation = Led_Control.STROBE
                 self.led_control_message.speed = 0.1
@@ -292,8 +345,8 @@ class HmiAgentNode():
                 self.led_control_message.green = 0
                 self.led_control_message.blue = 255
 
-            if self.operator_controller.getRisingEdgeButton(self.operator_params.party_mode_button_id):
-                self.party_time = not self.party_time
+            # if self.operator_joystick.getRisingEdgeButton(self.operator_params.party_mode_button_id):
+            #     self.party_time = not self.party_time
 
             if rospy.get_time() - self.led_timer > 3:
                 if not self.party_time:
