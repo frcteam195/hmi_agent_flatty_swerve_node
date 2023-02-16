@@ -222,33 +222,47 @@ class HmiAgentNode():
             self.arm_goal.goal = Arm_Goal.HOME
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.shelf_button_id):
-            self.arm_goal.goal = Arm_Goal.SHELF_PICKUP_FRONT
+            self.arm_goal.goal = Arm_Goal.SHELF_PICKUP
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.HIGH_CONE_FRONT
+            self.arm_goal.goal = Arm_Goal.HIGH_CONE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.MID_CONE_FRONT
+            self.arm_goal.goal = Arm_Goal.MID_CONE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.GROUND_CONE_FRONT
+            self.arm_goal.goal = Arm_Goal.GROUND_CONE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_dead_cone_button_id) \
                 or self.operator_joystick.getRisingEdgeButton(self.operator_params.joy_pickup_dead_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.GROUND_DEAD_CONE_FRONT
+            self.arm_goal.goal = Arm_Goal.GROUND_DEAD_CONE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cube_button_id):
-            self.arm_goal.goal = Arm_Goal.HIGH_CUBE_FRONT
+            self.arm_goal.goal = Arm_Goal.HIGH_CUBE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cube_button_id):
-            self.arm_goal.goal = Arm_Goal.MID_CUBE_FRONT
+            self.arm_goal.goal = Arm_Goal.MID_CUBE
         
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cube_button_id) \
                 or self.operator_joystick.getRisingEdgeButton(self.operator_params.joy_pickup_cube_button_id):
-            self.arm_goal.goal = Arm_Goal.GROUND_CUBE_FRONT
+            self.arm_goal.goal = Arm_Goal.GROUND_CUBE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.low_button_id):
-            self.arm_goal.goal = Arm_Goal.LOW_SCORE_FRONT
+            self.arm_goal.goal = Arm_Goal.LOW_SCORE
+
+        # arm should point away from our driver stattion for shelf pickup
+        if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
+            reverse_arm = not reverse_arm
+
+        # if self.operator_joystick.getButton(self.operator_params.)
+        if reverse_arm:
+            # Robot is facing our driver station
+            self.arm_goal.goal_side = Arm_Goal.SIDE_BACK
+        else:
+            self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
+
+        # if robot angle is between -90deg and 90deg, use back states, else use front states
+        # Unless overridden by operator control
 
         self.arm_goal_publisher.publish(self.arm_goal)
 
