@@ -252,9 +252,6 @@ class HmiAgentNode():
             self.arm_goal.goal = Arm_Goal.LOW_SCORE
 
         pov_status, pov_dir = self.operator_joystick.getRisingEdgePOV(0)
-        rospy.logerr(f"{pov_status} {pov_dir}")
-        if (pov_status):
-            rospy.logerr("True now------------------------------------------------------------------------")
 
         if pov_status:
             if pov_dir == 0:
