@@ -138,6 +138,7 @@ class HmiAgentNode():
         self.arm_goal_publisher = rospy.Publisher(name="/ArmGoal", data_class=Arm_Goal, queue_size=10, tcp_nodelay=True)
         self.arm_goal = Arm_Goal()
         self.arm_goal.goal = Arm_Goal.HOME
+        self.arm_goal.wrist_goal = Arm_Goal.WRIST_ZERO
 
         self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
         self.odometry_subscriber.register_for_updates("odometry/filtered")
@@ -249,6 +250,27 @@ class HmiAgentNode():
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.low_button_id):
             self.arm_goal.goal = Arm_Goal.LOW_SCORE
+
+        pov_status, pov_dir = self.operator_joystick.getRisingEdgePOV(0)
+        rospy.logerr(f"{pov_status} {pov_dir}")
+        if (pov_status):
+            rospy.logerr("True now------------------------------------------------------------------------")
+
+        if pov_status:
+            if pov_dir == 0:
+                self.arm_goal.wrist_goal = Arm_Goal.WRIST_ZERO
+
+            if pov_dir == 90:
+                if self.arm_goal.wrist_goal == Arm_Goal.WRIST_180:
+                    self.arm_goal.wrist_goal = Arm_Goal.WRIST_ZERO
+                elif self.arm_goal.wrist_goal == Arm_Goal.WRIST_ZERO:
+                    self.arm_goal.wrist_goal = Arm_Goal.WRIST_180
+
+            if pov_dir == 180:
+                self.arm_goal.wrist_goal = Arm_Goal.WRIST_180
+
+            if pov_dir == 270:
+                self.arm_goal.wrist_goal = Arm_Goal.WRIST_90
 
         # arm should point away from our driver stattion for shelf pickup
         if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
