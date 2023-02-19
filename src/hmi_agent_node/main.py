@@ -314,9 +314,9 @@ class HmiAgentNode():
             self.pinch_active = True
         elif self.operator_joystick.getRisingEdgeButton(self.operator_params.intake_open_button_id):
             self.pinch_active = False
-            if self.arm_goal.goal == Arm_Goal.HIGH_CONE:
-                intake_action = PlaceHighConeAction()
-                intake_control = None
+            # if self.arm_goal.goal == Arm_Goal.HIGH_CONE:
+            #     intake_action = PlaceHighConeAction()
+            #     intake_control = None
 
         if intake_control is not None:
             intake_control.pincher_solenoid_on = not self.pinch_active
