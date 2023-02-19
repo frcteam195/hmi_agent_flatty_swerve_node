@@ -9,7 +9,7 @@ import rospy
 
 from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
-from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control, Arm_Goal
+from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control, Arm_Goal, Arm_Status
 from nav_msgs.msg import Odometry
 
 from ck_utilities_py_node.ckmath import *
@@ -143,8 +143,13 @@ class HmiAgentNode():
         self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
         self.odometry_subscriber.register_for_updates("odometry/filtered")
 
+        self.arm_subscriber = BufferedROSMsgHandlerPy(Arm_Status)
+        self.arm_subscriber.register_for_updates("/ArmStatus")
+
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
+        #rospy.Subscriber(name="/ArmStatus", data_class=Arm_Status, callback=None, queue_size=1, tcp_nodelay=True)
         rospy.spin()
+
 
     def joystick_callback(self, message: Joystick_Status):
         """
@@ -154,6 +159,7 @@ class HmiAgentNode():
 
         hmi_update_message = HMI_Signals()
         hmi_update_message.drivetrain_brake = True
+
 
         #######################################################################
         ###                         DRIVER CONTROLS                         ###
@@ -182,7 +188,19 @@ class HmiAgentNode():
             active_theta = theta
 
         hmi_update_message.drivetrain_swerve_direction = active_theta
-        hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
+
+        arm_msg = self.arm_subscriber.get()
+        if arm_msg is not None:
+            arm_angle = abs(arm_msg.arm_base_angle) + abs(arm_msg.arm_upper_angle)
+            if arm_angle >= 150:
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r*0.2, 0.0, 1.0)
+            elif 150 > arm_angle and arm_angle >= 100:
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r*0.4, 0.0, 1.0)
+            elif 100 > arm_angle and arm_angle >= 30:
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r*0.8, 0.0, 1.0)
+            else:
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
+
         hmi_update_message.drivetrain_swerve_percent_angular_rot = z
 
         if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
