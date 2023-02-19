@@ -190,7 +190,7 @@ class HmiAgentNode():
         arm_msg = self.arm_subscriber.get()
         if arm_msg is not None:
             arm_angle = abs(arm_msg.arm_base_angle) + abs(arm_msg.arm_upper_angle)
-            if arm_angle >= 150:
+            if arm_angle >= 150 or arm_msg.extended:
                 hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.2, 0.2)
             elif 150 > arm_angle and arm_angle >= 100:
                 hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.4, 0.4)
