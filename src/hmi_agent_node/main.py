@@ -39,6 +39,7 @@ class DriverParams:
 
     drive_axis_deadband: float = 0.05
     drive_z_axis_deadband: float = 0.05
+    drive_z_axis_min_value_after_deadband : float = 0
 
     reset_odometry_button_id: int = -1
     robot_orient_button_id: int = -1
@@ -176,7 +177,7 @@ class HmiAgentNode():
         y = hmi_update_message.drivetrain_left_right
 
         invert_axis_z = -1 if self.driver_params.drive_z_axis_inverted else 1
-        z = invert_axis_z * self.driver_joystick.getFilteredAxis(self.driver_params.drive_z_axis_id, self.driver_params.drive_z_axis_deadband)
+        z = invert_axis_z * self.driver_joystick.getFilteredAxis(self.driver_params.drive_z_axis_id, self.driver_params.drive_z_axis_deadband, self.driver_params.drive_z_axis_min_value_after_deadband)
 
         r = hypotenuse(x, y)
         theta = polar_angle_rad(x, y)
