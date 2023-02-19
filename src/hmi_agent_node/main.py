@@ -91,9 +91,8 @@ class OperatorSplitParams:
     intake_close_button_id: int = -1
     intake_open_button_id: int = -1
 
-    joy_pickup_cube_button_id: int = -1
-    joy_pickup_dead_cone_button_id: int = -1
-    
+    pre_score_position_button_id: int = -1
+
     led_control_pov_id: int = -1
 
 
@@ -252,18 +251,19 @@ class HmiAgentNode():
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cone_button_id):
             self.arm_goal.goal = Arm_Goal.GROUND_CONE
 
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_dead_cone_button_id) \
-                or self.operator_joystick.getRisingEdgeButton(self.operator_params.joy_pickup_dead_cone_button_id):
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_dead_cone_button_id):
             self.arm_goal.goal = Arm_Goal.GROUND_DEAD_CONE
+
+        if self.operator_joystick.getRisingEdgeButton(self.operator_params.pre_score_position_button_id):
+            self.arm_goal.goal = Arm_Goal.PRE_SCORE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cube_button_id):
             self.arm_goal.goal = Arm_Goal.HIGH_CUBE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cube_button_id):
             self.arm_goal.goal = Arm_Goal.MID_CUBE
-        
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cube_button_id) \
-                or self.operator_joystick.getRisingEdgeButton(self.operator_params.joy_pickup_cube_button_id):
+
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cube_button_id):
             self.arm_goal.goal = Arm_Goal.GROUND_CUBE
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.low_button_id):
