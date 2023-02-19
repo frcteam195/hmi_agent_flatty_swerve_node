@@ -19,8 +19,9 @@ from ck_utilities_py_node.rosparam_helper import load_parameter_class
 from frc_robot_utilities_py_node.frc_robot_utilities_py import robot_status, register_for_robot_updates, reset_robot_pose
 from frc_robot_utilities_py_node.RobotStatusHelperPy import Alliance, BufferedROSMsgHandlerPy
 
+from actions_node.game_specific_actions.PlaceHighConeAction import PlaceHighConeAction
 from ck_ros_base_msgs_node.msg import Joystick_Status
-
+from actions_node.game_specific_actions.Subsystem import Subsystem
 
 @dataclass
 class DriverParams:
@@ -306,24 +307,31 @@ class HmiAgentNode():
         intake_control = Intake_Control()
         intake_action = None
 
-        if self.operator_joystick.getButton(self.operator_params.intake_open_button_id):
+        if Subsystem.INTAKE in self.action_runner.get_operated_systems():
+            intake_control = None
+
+        if self.operator_joystick.getButton(self.operator_params.intake_close_button_id):
             self.pinch_active = True
-        elif self.operator_joystick.getButton(self.operator_params.intake_close_button_id):
+        elif self.operator_joystick.getRisingEdgeButton(self.operator_params.intake_open_button_id):
             self.pinch_active = False
+            if self.arm_goal.goal == Arm_Goal.HIGH_CONE:
+                intake_action = PlaceHighConeAction()
+                intake_control = None
 
-        intake_control.pincher_solenoid_on = self.pinch_active
+        if intake_control is not None:
+            intake_control.pincher_solenoid_on = not self.pinch_active
 
-        if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
-            intake_control.rollers_intake = True
-            intake_control.rollers_outtake = False
-        elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
-            intake_control.rollers_intake = False
-            intake_control.rollers_outtake = True
+            if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
+                intake_control.rollers_intake = True
+                intake_control.rollers_outtake = False
+            elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
+                intake_control.rollers_intake = False
+                intake_control.rollers_outtake = True
+
+            self.intake_publisher.publish(intake_control)
 
         if intake_action is not None:
             self.action_runner.start_action(intake_action)
-
-        self.intake_publisher.publish(intake_control)
 
     def process_leds(self):
         """
