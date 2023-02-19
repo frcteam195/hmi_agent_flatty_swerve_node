@@ -193,13 +193,13 @@ class HmiAgentNode():
         if arm_msg is not None:
             arm_angle = abs(arm_msg.arm_base_angle) + abs(arm_msg.arm_upper_angle)
             if arm_angle >= 150:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r*0.2, 0.0, 1.0)
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.2, 0.2)
             elif 150 > arm_angle and arm_angle >= 100:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r*0.4, 0.0, 1.0)
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.4, 0.4)
             elif 100 > arm_angle and arm_angle >= 30:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r*0.8, 0.0, 1.0)
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.8, 0.8)
             else:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, 0.0, 1.0)
+                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -1.0, 1.0)
 
         hmi_update_message.drivetrain_swerve_percent_angular_rot = z
 
