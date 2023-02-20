@@ -219,7 +219,27 @@ class HmiAgentNode():
 
         if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid):
             #Do odometry align to grid
-            pass
+            odom_msg : Odometry = self.odometry_subscriber.get()
+            alliance : Alliance = robot_status.get_alliance()
+            desired_heading : float = 0
+            if self.arm_goal.goal_side == Arm_Goal.SIDE_BACK:
+                if alliance == Alliance.RED:
+                    desired_heading = 0
+                elif alliance == Alliance.BLUE:
+                    desired_heading = 180
+            elif self.arm_goal.goal_side == Arm_Goal.SIDE_FRONT:
+                if alliance == Alliance.RED:
+                    desired_heading = 180
+                elif alliance == Alliance.BLUE:
+                    desired_heading = 0
+
+            curr_pose = Pose(odom_msg.pose.pose)
+            actual_heading = math.degrees(curr_pose.orientation.yaw)
+            error = wrapMinMax(desired_heading - actual_heading, -180, 180)
+            output_val = limit(self.orientation_helper.update_by_error(error), -0.6, 0.6)
+            output_val = normalizeWithDeadband(output_val, 3 * self.orientation_helper.kP, 0.08)
+            hmi_update_message.drivetrain_swerve_percent_angular_rot = output_val
+
 
         #######################################################################
         ###                        OPERATOR CONTROLS                        ###
