@@ -311,7 +311,7 @@ class HmiAgentNode():
                 desired_heading : float = 0
 
                 if reverse_arm:
-                    
+
                     if alliance == Alliance.RED:
                         desired_heading = 0
                     elif alliance == Alliance.BLUE:
@@ -324,9 +324,13 @@ class HmiAgentNode():
 
                 curr_pose = Pose(odom_msg.pose.pose)
                 actual_heading = math.degrees(curr_pose.orientation.yaw)
+                hmi_update_message.actual_heading = actual_heading
                 error = wrapMinMax(desired_heading - actual_heading, -180, 180)
+                hmi_update_message.error = error
                 output_val = limit(self.orientation_helper.update_by_error(error), -0.6, 0.6)
+                hmi_update_message.initial_output_val = output_val
                 output_val = normalizeWithDeadband(output_val, 3 * self.orientation_helper.kP, 0.08)
+                hmi_update_message.second_output_val = output_val
                 hmi_update_message.drivetrain_swerve_percent_angular_rot = output_val
 
 
