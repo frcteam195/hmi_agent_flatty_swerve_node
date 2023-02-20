@@ -149,7 +149,7 @@ class HmiAgentNode():
         self.arm_subscriber = BufferedROSMsgHandlerPy(Arm_Status)
         self.arm_subscriber.register_for_updates("/ArmStatus")
 
-        self.orientation_helper = PIDController(kP=0.007)
+        self.orientation_helper = PIDController(kP=0.0067, kD=0.0005)
 
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
         rospy.spin()
