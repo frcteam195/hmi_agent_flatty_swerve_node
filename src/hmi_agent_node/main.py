@@ -324,6 +324,7 @@ class HmiAgentNode():
 
                 curr_pose = Pose(odom_msg.pose.pose)
                 actual_heading = math.degrees(curr_pose.orientation.yaw)
+                hmi_update_message.desired_heading = desired_heading
                 hmi_update_message.actual_heading = actual_heading
                 error = wrapMinMax(desired_heading - actual_heading, -180, 180)
                 hmi_update_message.error = error
