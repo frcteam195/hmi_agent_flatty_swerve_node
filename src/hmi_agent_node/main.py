@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import rospy
+import typing
 
 from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
@@ -198,20 +199,15 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_swerve_direction = active_theta
 
-        arm_msg = self.arm_subscriber.get()
-        if arm_msg is not None:
-            arm_angle = abs(arm_msg.arm_base_angle) + abs(arm_msg.arm_upper_angle)
-            if arm_angle >= 150 or arm_msg.extended:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.2, 0.2)
-            elif 150 > arm_angle and arm_angle >= 100:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.4, 0.4)
-            elif 100 > arm_angle and arm_angle >= 30:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.8, 0.8)
-            else:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -1.0, 1.0)
+        # Scale the drive power based on current arm position.
+        arm_status_message = self.arm_subscriber.get()
 
-        hmi_update_message.drivetrain_swerve_percent_angular_rot = z
+        if arm_status_message is not None:
+            limited_forward_velocity, limited_angular_rotation = limit_drive_power(arm_status_message, r, z)
+            hmi_update_message.drivetrain_swerve_percent_fwd_vel = limited_forward_velocity
+            hmi_update_message.drivetrain_swerve_percent_angular_rot = limited_angular_rotation
 
+        # Swap between field centric and robot oriented drive.
         if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
             self.drivetrain_orientation = HMI_Signals.ROBOT_ORIENTED
         elif self.driver_joystick.getButton(self.driver_params.field_centric_button_id):
@@ -430,3 +426,19 @@ class HmiAgentNode():
                     self.led_control_message.brightness = 1
 
         self.led_control_publisher.publish(self.led_control_message)
+
+
+def limit_drive_power(arm_status: Arm_Status, forward_velocity: float, angular_rotation: float) -> typing.Tuple[float, float]:
+    """
+    Limit the drive power depending on the current arm position.
+    """
+    overall_arm_angle = abs(arm_status.arm_base_angle + arm_status.arm_upper_angle)
+
+    forward_limit = -0.006666667 * overall_arm_angle + 1.2
+    angular_limit = -0.006666667 * overall_arm_angle + 1.2
+
+    if arm_status.extended:
+        forward_limit -= 0.1
+        angular_limit -= 0.1
+
+    return limit(forward_velocity, -forward_limit, forward_limit), limit(angular_rotation, -angular_limit, angular_limit)
