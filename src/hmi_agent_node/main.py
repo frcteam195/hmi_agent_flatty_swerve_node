@@ -16,7 +16,7 @@ from ck_utilities_py_node.ckmath import *
 from ck_utilities_py_node.geometry import *
 from ck_utilities_py_node.joystick import Joystick
 from ck_utilities_py_node.rosparam_helper import load_parameter_class
-from frc_robot_utilities_py_node.frc_robot_utilities_py import robot_status, register_for_robot_updates, reset_robot_pose
+from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from frc_robot_utilities_py_node.RobotStatusHelperPy import Alliance, BufferedROSMsgHandlerPy
 
 from actions_node.game_specific_actions.PlaceHighConeAction import PlaceHighConeAction
@@ -159,6 +159,11 @@ class HmiAgentNode():
         """
         Joystick callback function. This runs everytime a new joystick status message is received.
         """
+
+        #DO NOT REMOVE THIS CHECK!!!!!!!!!! DID YOU LEARN NOTHING FROM 2022?!
+        if robot_status.get_mode() != RobotMode.TELEOP:
+            return
+
         Joystick.update(message)
 
         hmi_update_message = HMI_Signals()
@@ -296,8 +301,8 @@ class HmiAgentNode():
         if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
             reverse_arm = not reverse_arm
 
-        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid) or \
-            self.arm_goal.goal == Arm_Goal.PRE_SCORE:
+        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid):
+            #self.arm_goal.goal == Arm_Goal.PRE_SCORE:
             #self.arm_goal.goal == Arm_Goal.SHELF_PICKUP or \
             #Do odometry align to grid
             odom_msg : Odometry = self.odometry_subscriber.get()
