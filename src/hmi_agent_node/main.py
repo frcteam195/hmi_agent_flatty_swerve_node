@@ -149,12 +149,7 @@ class HmiAgentNode():
         self.arm_subscriber = BufferedROSMsgHandlerPy(Arm_Status)
         self.arm_subscriber.register_for_updates("/ArmStatus")
 
-        self.orientation_helper = PIDController(kP=0.01)
-
-        self.debug_pub1 = rospy.Publisher("HMIDesiredHeading", std_msgs.msg.Float32)
-        self.debug_pub2 = rospy.Publisher("HMIActualHeading", std_msgs.msg.Float32)
-        self.debug_pub3 = rospy.Publisher("HMIError", std_msgs.msg.Float32)
-        self.debug_pub4 = rospy.Publisher("HMIOutputVal", std_msgs.msg.Float32)
+        self.orientation_helper = PIDController(kP=0.007)
 
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
         rospy.spin()
@@ -222,47 +217,6 @@ class HmiAgentNode():
         if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose(robot_status.get_alliance())
 
-        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid):
-            #Do odometry align to grid
-            odom_msg : Odometry = self.odometry_subscriber.get()
-            alliance : Alliance = robot_status.get_alliance()
-            if odom_msg is not None and alliance is not None:
-                desired_heading : float = 0
-                if self.arm_goal.goal_side == Arm_Goal.SIDE_BACK:
-                    if alliance == Alliance.RED:
-                        desired_heading = 0
-                    elif alliance == Alliance.BLUE:
-                        desired_heading = 180
-                elif self.arm_goal.goal_side == Arm_Goal.SIDE_FRONT:
-                    if alliance == Alliance.RED:
-                        desired_heading = 180
-                    elif alliance == Alliance.BLUE:
-                        desired_heading = 0
-
-                curr_pose = Pose(odom_msg.pose.pose)
-                actual_heading = math.degrees(curr_pose.orientation.yaw)
-                error = wrapMinMax(desired_heading - actual_heading, -180, 180)
-                output_val = limit(self.orientation_helper.update_by_error(error), -0.6, 0.6)
-                output_val = normalizeWithDeadband(output_val, 3 * self.orientation_helper.kP, 0.08)
-                hmi_update_message.drivetrain_swerve_percent_angular_rot = output_val
-
-                f1 = std_msgs.msg.Float32()
-                f1.data = desired_heading
-                self.debug_pub1.publish(f1)
-
-                f2 = std_msgs.msg.Float32()
-                f2.data = actual_heading
-                self.debug_pub2.publish(f2)
-
-                f3 = std_msgs.msg.Float32()
-                f3.data = error
-                self.debug_pub3.publish(f3)
-
-                f4 = std_msgs.msg.Float32()
-                f4.data = output_val
-                self.debug_pub4.publish(f4)
-
-
         #######################################################################
         ###                        OPERATOR CONTROLS                        ###
         #######################################################################
@@ -277,13 +231,13 @@ class HmiAgentNode():
             yaw = normalize_to_2_pi(yaw)
             self.heading = np.degrees(yaw)
 
-        target_alliance = Alliance.BLUE if 90 < self.heading < 270 else Alliance.RED
+        target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
         hmi_update_message.drivetrain_heading = self.heading
+
 
         ################################################################################
         ###                         CONTROL MAPPINGS                                 ###
         ################################################################################
-        reverse_arm = target_alliance != robot_status.get_alliance()
 
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.home_button_id):
             self.arm_goal.goal = Arm_Goal.HOME
@@ -336,9 +290,40 @@ class HmiAgentNode():
             if pov_dir == 270:
                 self.arm_goal.wrist_goal = Arm_Goal.WRIST_90
 
+        reverse_arm = target_alliance != robot_status.get_alliance()
+
         # arm should point away from our driver stattion for shelf pickup
         if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
             reverse_arm = not reverse_arm
+
+        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid) or \
+            self.arm_goal.goal == Arm_Goal.PRE_SCORE:
+            #self.arm_goal.goal == Arm_Goal.SHELF_PICKUP or \
+            #Do odometry align to grid
+            odom_msg : Odometry = self.odometry_subscriber.get()
+            alliance : Alliance = robot_status.get_alliance()
+            if odom_msg is not None and alliance is not None:
+                desired_heading : float = 0
+
+                if reverse_arm:
+                    
+                    if alliance == Alliance.RED:
+                        desired_heading = 0
+                    elif alliance == Alliance.BLUE:
+                        desired_heading = 180
+                else:
+                    if alliance == Alliance.RED:
+                        desired_heading = 180
+                    elif alliance == Alliance.BLUE:
+                        desired_heading = 0
+
+                curr_pose = Pose(odom_msg.pose.pose)
+                actual_heading = math.degrees(curr_pose.orientation.yaw)
+                error = wrapMinMax(desired_heading - actual_heading, -180, 180)
+                output_val = limit(self.orientation_helper.update_by_error(error), -0.6, 0.6)
+                output_val = normalizeWithDeadband(output_val, 3 * self.orientation_helper.kP, 0.08)
+                hmi_update_message.drivetrain_swerve_percent_angular_rot = output_val
+
 
         if reverse_arm:
             # Robot is facing our driver station
