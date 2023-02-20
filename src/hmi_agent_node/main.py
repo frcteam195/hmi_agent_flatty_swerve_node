@@ -132,7 +132,7 @@ class HmiAgentNode():
 
         self.heading = 0.0
 
-        self.pinch_active = False
+        self.pinch_active = True
 
         self.hmi_publisher = rospy.Publisher(name="/HMISignals", data_class=HMI_Signals, queue_size=10, tcp_nodelay=True)
         self.odometry_publisher = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
