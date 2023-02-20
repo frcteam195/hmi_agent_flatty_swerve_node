@@ -22,6 +22,7 @@ from frc_robot_utilities_py_node.RobotStatusHelperPy import Alliance, BufferedRO
 from actions_node.game_specific_actions.PlaceHighConeAction import PlaceHighConeAction
 from ck_ros_base_msgs_node.msg import Joystick_Status
 from actions_node.game_specific_actions.Subsystem import Subsystem
+from ck_utilities_py_node.pid_controller import PIDController
 
 @dataclass
 class DriverParams:
@@ -42,6 +43,7 @@ class DriverParams:
     drive_z_axis_min_value_after_deadband : float = 0
 
     reset_odometry_button_id: int = -1
+    robot_align_to_grid: int = -1
     robot_orient_button_id: int = -1
     field_centric_button_id: int = -1
 
@@ -147,6 +149,8 @@ class HmiAgentNode():
         self.arm_subscriber = BufferedROSMsgHandlerPy(Arm_Status)
         self.arm_subscriber.register_for_updates("/ArmStatus")
 
+        self.orientation_helper = PIDController(kP=0.01)
+
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
         rospy.spin()
 
@@ -212,6 +216,10 @@ class HmiAgentNode():
 
         if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose()
+
+        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid):
+            #Do odometry align to grid
+            pass
 
         #######################################################################
         ###                        OPERATOR CONTROLS                        ###
