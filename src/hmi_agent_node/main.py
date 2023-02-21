@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import rospy
+import typing
 
 from actions_node.ActionRunner import ActionRunner
 from actions_node.game_specific_actions import AutomatedActions
@@ -131,10 +132,9 @@ class HmiAgentNode():
 
         self.heading = 0.0
 
-        self.pinch_active = False
+        self.pinch_active = True
 
         self.hmi_publisher = rospy.Publisher(name="/HMISignals", data_class=HMI_Signals, queue_size=10, tcp_nodelay=True)
-        self.odometry_publisher = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
         self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
         self.led_control_publisher = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
 
@@ -149,7 +149,7 @@ class HmiAgentNode():
         self.arm_subscriber = BufferedROSMsgHandlerPy(Arm_Status)
         self.arm_subscriber.register_for_updates("/ArmStatus")
 
-        self.orientation_helper = PIDController(kP=0.007)
+        self.orientation_helper = PIDController(kP=0.0067, kD=0.0005)
 
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
         rospy.spin()
@@ -198,20 +198,15 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_swerve_direction = active_theta
 
-        arm_msg = self.arm_subscriber.get()
-        if arm_msg is not None:
-            arm_angle = abs(arm_msg.arm_base_angle) + abs(arm_msg.arm_upper_angle)
-            if arm_angle >= 150 or arm_msg.extended:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.2, 0.2)
-            elif 150 > arm_angle and arm_angle >= 100:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.4, 0.4)
-            elif 100 > arm_angle and arm_angle >= 30:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -0.8, 0.8)
-            else:
-                hmi_update_message.drivetrain_swerve_percent_fwd_vel = limit(r, -1.0, 1.0)
+        # Scale the drive power based on current arm position.
+        arm_status_message = self.arm_subscriber.get()
 
-        hmi_update_message.drivetrain_swerve_percent_angular_rot = z
+        if arm_status_message is not None:
+            limited_forward_velocity, limited_angular_rotation = limit_drive_power(arm_status_message, r, z)
+            hmi_update_message.drivetrain_swerve_percent_fwd_vel = limited_forward_velocity
+            hmi_update_message.drivetrain_swerve_percent_angular_rot = limited_angular_rotation
 
+        # Swap between field centric and robot oriented drive.
         if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
             self.drivetrain_orientation = HMI_Signals.ROBOT_ORIENTED
         elif self.driver_joystick.getButton(self.driver_params.field_centric_button_id):
@@ -219,7 +214,7 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
-        if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
+        if self.driver_joystick.getRisingEdgeButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose(robot_status.get_alliance())
 
         #######################################################################
@@ -358,14 +353,15 @@ class HmiAgentNode():
 
         if self.operator_joystick.getButton(self.operator_params.intake_close_button_id):
             self.pinch_active = True
-        elif self.operator_joystick.getRisingEdgeButton(self.operator_params.intake_open_button_id):
+        elif self.operator_joystick.getButton(self.operator_params.intake_open_button_id):
             self.pinch_active = False
-            # if self.arm_goal.goal == Arm_Goal.HIGH_CONE:
-            #     intake_action = PlaceHighConeAction()
-            #     intake_control = None
+        elif self.arm_goal.goal == Arm_Goal.GROUND_CUBE:
+            self.pinch_active = False
+        elif self.arm_goal.goal == Arm_Goal.GROUND_CONE or self.arm_goal.goal == Arm_Goal.GROUND_DEAD_CONE:
+            self.pinch_active = True
 
         if intake_control is not None:
-            intake_control.pincher_solenoid_on = not self.pinch_active
+            intake_control.pinched = self.pinch_active
 
             if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
                 intake_control.rollers_intake = True
@@ -431,3 +427,20 @@ class HmiAgentNode():
                     self.led_control_message.brightness = 1
 
         self.led_control_publisher.publish(self.led_control_message)
+
+
+def limit_drive_power(arm_status: Arm_Status, forward_velocity: float, angular_rotation: float) -> typing.Tuple[float, float]:
+    """
+    Limit the drive power depending on the current arm position.
+    """
+    overall_arm_angle = abs(arm_status.arm_base_angle + arm_status.arm_upper_angle)
+    overall_arm_angle = limit(overall_arm_angle, 0.0, 150)
+
+    forward_limit = -0.006666667 * overall_arm_angle + 1.2
+    angular_limit = -0.006666667 * overall_arm_angle + 1.2
+
+    if arm_status.extended:
+        forward_limit -= 0.1
+        angular_limit -= 0.1
+
+    return limit(forward_velocity, -forward_limit, forward_limit), limit(angular_rotation, -angular_limit, angular_limit)
