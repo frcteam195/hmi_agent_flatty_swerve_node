@@ -135,7 +135,6 @@ class HmiAgentNode():
         self.pinch_active = True
 
         self.hmi_publisher = rospy.Publisher(name="/HMISignals", data_class=HMI_Signals, queue_size=10, tcp_nodelay=True)
-        self.odometry_publisher = rospy.Publisher(name="/ResetHeading", data_class=Odometry, queue_size=10, tcp_nodelay=True)
         self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
         self.led_control_publisher = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
 
@@ -215,7 +214,7 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
-        if self.driver_joystick.getButton(self.driver_params.reset_odometry_button_id):
+        if self.driver_joystick.getRisingEdgeButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose(robot_status.get_alliance())
 
         #######################################################################
@@ -353,11 +352,12 @@ class HmiAgentNode():
 
         if self.operator_joystick.getButton(self.operator_params.intake_close_button_id):
             self.pinch_active = True
-        elif self.operator_joystick.getRisingEdgeButton(self.operator_params.intake_open_button_id):
+        elif self.operator_joystick.getButton(self.operator_params.intake_open_button_id):
             self.pinch_active = False
-            # if self.arm_goal.goal == Arm_Goal.HIGH_CONE:
-            #     intake_action = PlaceHighConeAction()
-            #     intake_control = None
+        elif self.arm_goal.goal == Arm_Goal.GROUND_CUBE:
+            self.pinch_active = False
+        elif self.arm_goal.goal == Arm_Goal.GROUND_CONE or self.arm_goal.goal == Arm_Goal.GROUND_DEAD_CONE:
+            self.pinch_active = True
 
         if intake_control is not None:
             intake_control.pincher_solenoid_on = not self.pinch_active
@@ -433,6 +433,7 @@ def limit_drive_power(arm_status: Arm_Status, forward_velocity: float, angular_r
     Limit the drive power depending on the current arm position.
     """
     overall_arm_angle = abs(arm_status.arm_base_angle + arm_status.arm_upper_angle)
+    overall_arm_angle = limit(overall_arm_angle, 0.0, 150)
 
     forward_limit = -0.006666667 * overall_arm_angle + 1.2
     angular_limit = -0.006666667 * overall_arm_angle + 1.2
