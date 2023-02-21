@@ -360,7 +360,7 @@ class HmiAgentNode():
             self.pinch_active = True
 
         if intake_control is not None:
-            intake_control.pincher_solenoid_on = not self.pinch_active
+            intake_control.pinched = self.pinch_active
 
             if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
                 intake_control.rollers_intake = True
