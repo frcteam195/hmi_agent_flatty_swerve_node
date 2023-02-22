@@ -296,8 +296,8 @@ class HmiAgentNode():
         if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
             reverse_arm = not reverse_arm
 
-        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid):
-            #self.arm_goal.goal == Arm_Goal.PRE_SCORE:
+        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid) or \
+           self.arm_goal.goal == Arm_Goal.PRE_SCORE:
             #self.arm_goal.goal == Arm_Goal.SHELF_PICKUP or \
             #Do odometry align to grid
             odom_msg : Odometry = self.odometry_subscriber.get()
