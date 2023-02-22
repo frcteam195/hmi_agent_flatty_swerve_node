@@ -292,10 +292,6 @@ class HmiAgentNode():
 
         reverse_arm = target_alliance != robot_status.get_alliance()
 
-        # arm should point away from our driver stattion for shelf pickup
-        if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
-            reverse_arm = not reverse_arm
-
         if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid) or \
            self.arm_goal.goal == Arm_Goal.PRE_SCORE:
             #self.arm_goal.goal == Arm_Goal.SHELF_PICKUP or \
@@ -329,6 +325,9 @@ class HmiAgentNode():
                 hmi_update_message.second_output_val = output_val
                 hmi_update_message.drivetrain_swerve_percent_angular_rot = output_val
 
+        # arm should point away from our driver stattion for shelf pickup
+        if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
+            reverse_arm = not reverse_arm
 
         if reverse_arm:
             # Robot is facing our driver station
