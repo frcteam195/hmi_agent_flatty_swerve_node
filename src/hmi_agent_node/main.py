@@ -292,8 +292,8 @@ class HmiAgentNode():
 
         reverse_arm = target_alliance != robot_status.get_alliance()
 
-        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid) or \
-           self.arm_goal.goal == Arm_Goal.PRE_SCORE:
+        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid):
+            # or  self.arm_goal.goal == Arm_Goal.PRE_SCORE:
             #self.arm_goal.goal == Arm_Goal.SHELF_PICKUP or \
             #Do odometry align to grid
             odom_msg : Odometry = self.odometry_subscriber.get()
@@ -333,6 +333,9 @@ class HmiAgentNode():
             # Robot is facing our driver station
             self.arm_goal.goal_side = Arm_Goal.SIDE_BACK
         else:
+            self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
+
+        if self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_CUBE, Arm_Goal.GROUND_DEAD_CONE):
             self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
 
         self.arm_goal_publisher.publish(self.arm_goal)
