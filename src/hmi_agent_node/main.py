@@ -359,7 +359,7 @@ class HmiAgentNode():
             self.pinch_active = False
         elif self.arm_goal.goal == Arm_Goal.GROUND_CUBE:
             self.pinch_active = False
-        elif self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_DEAD_CONE, Arm_Goal.HIGH_CUBE):
+        elif self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_DEAD_CONE):
             self.pinch_active = True
 
         if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
@@ -368,10 +368,6 @@ class HmiAgentNode():
         elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
             intake_control.rollers_intake = False
             intake_control.rollers_outtake = True
-            if self.arm_goal.goal == Arm_Goal.HIGH_CUBE:
-                intake_control.speed = -0.45
-            else:
-                intake_control.speed = 0
 
         if intake_control is not None:
             intake_control.pinched = self.pinch_active
