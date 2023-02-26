@@ -359,20 +359,24 @@ class HmiAgentNode():
             self.pinch_active = False
         elif self.arm_goal.goal == Arm_Goal.GROUND_CUBE:
             self.pinch_active = False
-        elif self.arm_goal.goal == Arm_Goal.GROUND_CONE or self.arm_goal.goal == Arm_Goal.GROUND_DEAD_CONE:
+        elif self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_DEAD_CONE, Arm_Goal.HIGH_CUBE):
             self.pinch_active = True
+
+        if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
+            intake_control.rollers_intake = True
+            intake_control.rollers_outtake = False
+        elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
+            intake_control.rollers_intake = False
+            intake_control.rollers_outtake = True
+            if self.arm_goal.goal == Arm_Goal.HIGH_CUBE:
+                intake_control.speed = -0.45
+            else:
+                intake_control.speed = 0
 
         if intake_control is not None:
             intake_control.pinched = self.pinch_active
 
-            if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
-                intake_control.rollers_intake = True
-                intake_control.rollers_outtake = False
-            elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
-                intake_control.rollers_intake = False
-                intake_control.rollers_outtake = True
-
-            self.intake_publisher.publish(intake_control)
+        self.intake_publisher.publish(intake_control)
 
         if intake_action is not None:
             self.action_runner.start_action(intake_action)
