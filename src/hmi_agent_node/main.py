@@ -368,6 +368,10 @@ class HmiAgentNode():
         elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
             intake_control.rollers_intake = False
             intake_control.rollers_outtake = True
+            if self.arm_goal.goal == Arm_Goal.HIGH_CUBE:
+                intake_control.speed = -0.3
+            else:
+                intake_control.speed = 0
 
         if intake_control is not None:
             intake_control.pinched = self.pinch_active
