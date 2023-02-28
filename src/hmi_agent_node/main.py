@@ -24,6 +24,7 @@ from actions_node.game_specific_actions.PlaceHighConeAction import PlaceHighCone
 from ck_ros_base_msgs_node.msg import Joystick_Status
 from actions_node.game_specific_actions.Subsystem import Subsystem
 from ck_utilities_py_node.pid_controller import PIDController
+# import cProfile
 
 @dataclass
 class DriverParams:
@@ -152,7 +153,11 @@ class HmiAgentNode():
         self.orientation_helper = PIDController(kP=0.0047, kD=0.001, filter_r=0.6)
 
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
+        # profiler = cProfile.Profile()
+        # profiler.enable()
         rospy.spin()
+        # profiler.disable()
+        # profiler.dump_stats("/mnt/working/hmi_agent_node.stats")
 
 
     def joystick_callback(self, message: Joystick_Status):
@@ -221,7 +226,7 @@ class HmiAgentNode():
         ###                        OPERATOR CONTROLS                        ###
         #######################################################################
         self.process_intake_control()
-        self.process_leds()
+        # self.process_leds()
 
         # Determine the alliance station the robot is facing.
         if self.odometry_subscriber.get() is not None:
