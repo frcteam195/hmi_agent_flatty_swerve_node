@@ -297,7 +297,7 @@ class HmiAgentNode():
 
         reverse_arm = target_alliance != robot_status.get_alliance()
 
-        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid) or \
+        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid): # or \
             # self.arm_goal.goal == Arm_Goal.PRE_SCORE: or \
             # self.arm_goal.goal == Arm_Goal.SHELF_PICKUP:
             #Do odometry align to grid
