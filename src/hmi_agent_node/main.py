@@ -277,6 +277,10 @@ class HmiAgentNode():
         if self.operator_button_box.getRisingEdgeButton(self.operator_params.low_button_id):
             self.arm_goal.goal = Arm_Goal.LOW_SCORE
 
+        # TODO: Put this in the params
+        if self.operator_button_box.getRisingEdgeButton(11):
+            self.arm_goal.goal = Arm_Goal.PRE_DEAD_CONE
+
         pov_status, pov_dir = self.operator_joystick.getRisingEdgePOV(0)
 
         if pov_status:
@@ -340,7 +344,7 @@ class HmiAgentNode():
         else:
             self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
 
-        if self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_CUBE, Arm_Goal.GROUND_DEAD_CONE):
+        if self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_CUBE, Arm_Goal.GROUND_DEAD_CONE, Arm_Goal.PRE_DEAD_CONE):
             self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
 
         self.arm_goal_publisher.publish(self.arm_goal)
