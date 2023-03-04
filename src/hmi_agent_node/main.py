@@ -374,7 +374,7 @@ class HmiAgentNode():
             intake_control.rollers_intake = False
             intake_control.rollers_outtake = True
             if self.arm_goal.goal == Arm_Goal.HIGH_CUBE:
-                intake_control.speed = -0.3
+                intake_control.speed = 0.3
             else:
                 intake_control.speed = 0
 
