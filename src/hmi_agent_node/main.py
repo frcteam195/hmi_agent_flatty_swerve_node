@@ -345,7 +345,7 @@ class HmiAgentNode():
             self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
 
         if self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_CUBE, Arm_Goal.GROUND_DEAD_CONE, Arm_Goal.PRE_DEAD_CONE):
-            self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
+            self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT if not self.operator_joystick.getButton(3) else Arm_Goal.SIDE_BACK
 
         self.arm_goal_publisher.publish(self.arm_goal)
 
@@ -366,7 +366,7 @@ class HmiAgentNode():
             self.pinch_active = True
         elif self.operator_joystick.getButton(self.operator_params.intake_open_button_id):
             self.pinch_active = False
-        elif self.arm_goal.goal == Arm_Goal.GROUND_CUBE:
+        elif self.arm_goal.goal in (Arm_Goal.GROUND_CUBE, Arm_Goal.PRE_DEAD_CONE):
             self.pinch_active = False
         elif self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_DEAD_CONE):
             self.pinch_active = True
