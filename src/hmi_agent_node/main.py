@@ -225,7 +225,7 @@ class HmiAgentNode():
         ###                        OPERATOR CONTROLS                        ###
         #######################################################################
         self.process_intake_control()
-        # self.process_leds()
+        self.process_leds()
 
         # Determine the alliance station the robot is facing.
         if self.odometry_subscriber.get() is not None:
@@ -393,52 +393,59 @@ class HmiAgentNode():
         """
         Handles all the LED changes.
         """
-        self.led_control_message.control_mode = Led_Control.ANIMATE
-        self.led_control_message.number_leds = 58
+        self.led_control_message.control_mode = Led_Control.SET_LED
+        self.led_control_message.number_leds = 20
+        self.led_control_message.brightness = 1.0
+        self.led_control_message.red = 255
+        self.led_control_message.green = 0
+        self.led_control_message.blue = 255
 
-        if not robot_status.is_connected():
-            self.led_control_message.animation = Led_Control.STROBE
-            self.led_control_message.speed = 0.3
-            self.led_control_message.brightness = 0.5
-            self.led_control_message.red = 255
-            self.led_control_message.green = 0
-            self.led_control_message.blue = 0
+        # self.led_control_message.control_mode = Led_Control.ANIMATE
+        # self.led_control_message.number_leds = 58
 
-        else:
-            if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 270:
-                self.led_timer = rospy.get_time()
-                self.led_control_message.animation = Led_Control.STROBE
-                self.led_control_message.speed = 0.1
-                self.led_control_message.brightness = 0.5
-                self.led_control_message.red = 255
-                self.led_control_message.green = 255
-                self.led_control_message.blue = 0
+        # if not robot_status.is_connected():
+        #     self.led_control_message.animation = Led_Control.STROBE
+        #     self.led_control_message.speed = 0.3
+        #     self.led_control_message.brightness = 0.5
+        #     self.led_control_message.red = 255
+        #     self.led_control_message.green = 0
+        #     self.led_control_message.blue = 0
 
-            if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 90:
-                self.led_timer = rospy.get_time()
-                self.led_control_message.animation = Led_Control.STROBE
-                self.led_control_message.speed = 0.1
-                self.led_control_message.brightness = 0.5
-                self.led_control_message.red = 255
-                self.led_control_message.green = 0
-                self.led_control_message.blue = 255
+        # else:
+        #     if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 270:
+        #         self.led_timer = rospy.get_time()
+        #         self.led_control_message.animation = Led_Control.STROBE
+        #         self.led_control_message.speed = 0.1
+        #         self.led_control_message.brightness = 0.5
+        #         self.led_control_message.red = 255
+        #         self.led_control_message.green = 255
+        #         self.led_control_message.blue = 0
 
-            # if self.operator_joystick.getRisingEdgeButton(self.operator_params.party_mode_button_id):
-            #     self.party_time = not self.party_time
+        #     if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 90:
+        #         self.led_timer = rospy.get_time()
+        #         self.led_control_message.animation = Led_Control.STROBE
+        #         self.led_control_message.speed = 0.1
+        #         self.led_control_message.brightness = 0.5
+        #         self.led_control_message.red = 255
+        #         self.led_control_message.green = 0
+        #         self.led_control_message.blue = 255
 
-            if rospy.get_time() - self.led_timer > 3:
-                if not self.party_time:
-                    self.led_control_message.animation = Led_Control.LARSON
-                    self.led_control_message.speed = 0.5
-                    self.led_control_message.brightness = 0.5
-                    self.led_control_message.red = 0
-                    self.led_control_message.green = 255
-                    self.led_control_message.blue = 0
+        #     # if self.operator_joystick.getRisingEdgeButton(self.operator_params.party_mode_button_id):
+        #     #     self.party_time = not self.party_time
 
-                else:
-                    self.led_control_message.animation = Led_Control.RAINBOW
-                    self.led_control_message.speed = 1
-                    self.led_control_message.brightness = 1
+        #     if rospy.get_time() - self.led_timer > 3:
+        #         if not self.party_time:
+        #             self.led_control_message.animation = Led_Control.LARSON
+        #             self.led_control_message.speed = 0.5
+        #             self.led_control_message.brightness = 0.5
+        #             self.led_control_message.red = 0
+        #             self.led_control_message.green = 255
+        #             self.led_control_message.blue = 0
+
+        #         else:
+        #             self.led_control_message.animation = Led_Control.RAINBOW
+        #             self.led_control_message.speed = 1
+        #             self.led_control_message.brightness = 1
 
         self.led_control_publisher.publish(self.led_control_message)
 
