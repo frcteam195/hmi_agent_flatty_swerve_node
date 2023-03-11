@@ -205,11 +205,10 @@ class HmiAgentNode():
 
         # Scale the drive power based on current arm position.
         arm_status_message = self.arm_subscriber.get()
+        limited_forward_velocity, limited_angular_rotation = limit_drive_power(arm_status_message, r, z)
 
-        if arm_status_message is not None:
-            limited_forward_velocity, limited_angular_rotation = limit_drive_power(arm_status_message, r, z)
-            hmi_update_message.drivetrain_swerve_percent_fwd_vel = limited_forward_velocity
-            hmi_update_message.drivetrain_swerve_percent_angular_rot = limited_angular_rotation
+        hmi_update_message.drivetrain_swerve_percent_fwd_vel = limited_forward_velocity
+        hmi_update_message.drivetrain_swerve_percent_angular_rot = limited_angular_rotation
 
         # Swap between field centric and robot oriented drive.
         if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
@@ -448,14 +447,21 @@ def limit_drive_power(arm_status: Arm_Status, forward_velocity: float, angular_r
     """
     Limit the drive power depending on the current arm position.
     """
-    overall_arm_angle = abs(arm_status.arm_base_angle + arm_status.arm_upper_angle)
-    overall_arm_angle = limit(overall_arm_angle, 0.0, 150)
+    forward_limit = 1.0
+    angular_limit = 1.0
 
-    forward_limit = -0.006666667 * overall_arm_angle + 1.2
-    angular_limit = -0.006666667 * overall_arm_angle + 1.2
+    if arm_status is not None:
+        overall_arm_angle = abs(arm_status.arm_base_angle + arm_status.arm_upper_angle)
+        overall_arm_angle = limit(overall_arm_angle, 0.0, 150)
 
-    if arm_status.extended:
-        forward_limit -= 0.1
-        angular_limit -= 0.1
+        forward_limit = -0.006666667 * overall_arm_angle + 1.2
+        angular_limit = -0.006666667 * overall_arm_angle + 1.2
+
+        if arm_status.extended:
+            forward_limit -= 0.1
+            angular_limit -= 0.1
+
+    forward_limit = limit(forward_limit, 0.0, 1.0)
+    angular_limit = limit(angular_limit, 0.0, 1.0)
 
     return limit(forward_velocity, -forward_limit, forward_limit), limit(angular_rotation, -angular_limit, angular_limit)
