@@ -394,7 +394,7 @@ class HmiAgentNode():
         Handles all the LED changes.
         """
         self.led_control_message.control_mode = Led_Control.ANIMATE
-        self.led_control_message.number_leds = 8
+        self.led_control_message.number_leds = 58
 
         if not robot_status.is_connected():
             self.led_control_message.animation = Led_Control.STROBE
