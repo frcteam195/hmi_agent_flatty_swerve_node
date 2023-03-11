@@ -26,6 +26,10 @@ from actions_node.game_specific_actions.Subsystem import Subsystem
 from ck_utilities_py_node.pid_controller import PIDController
 # import cProfile
 
+num_leds = 50
+color_purple = Led_Control(0, 0, 92, 6, 140, 0, 1, 0, num_leds)
+color_yellow = Led_Control(0, 0, 255, 255, 0, 0, 1, 0, num_leds)
+
 @dataclass
 class DriverParams:
     """
@@ -127,9 +131,10 @@ class HmiAgentNode():
 
         self.drivetrain_orientation = HMI_Signals.FIELD_CENTRIC
 
-        self.led_control_message = Led_Control()
+        self.led_control_message = color_purple
         self.led_timer = 0
         self.party_time = False
+        self.curr_color = False
 
         self.heading = 0.0
 
@@ -167,6 +172,7 @@ class HmiAgentNode():
 
         #DO NOT REMOVE THIS CHECK!!!!!!!!!! DID YOU LEARN NOTHING FROM 2022?!
         if robot_status.get_mode() != RobotMode.TELEOP:
+            self.process_leds()
             return
 
         Joystick.update(message)
@@ -394,20 +400,13 @@ class HmiAgentNode():
         Handles all the LED changes.
         """
 
-        if self.operator_joystick.getButton(10):
-            self.led_control_message.control_mode = Led_Control.SET_LED
-            self.led_control_message.number_leds = 50
-            self.led_control_message.brightness = 0.0
-            self.led_control_message.red = 0
-            self.led_control_message.green = 0
-            self.led_control_message.blue = 0
-        else:
-            self.led_control_message.control_mode = Led_Control.SET_LED
-            self.led_control_message.number_leds = 50
-            self.led_control_message.brightness = 1.0
-            self.led_control_message.red = 92
-            self.led_control_message.green = 6
-            self.led_control_message.blue = 140
+        if self.operator_joystick.getRisingEdgeButton(10):
+            self.curr_color = not self.curr_color
+            if self.curr_color:
+                self.led_control_message = color_yellow
+            else:
+                self.led_control_message = color_purple
+                
 
         # self.led_control_message.control_mode = Led_Control.ANIMATE
         # self.led_control_message.number_leds = 58
