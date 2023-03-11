@@ -393,12 +393,21 @@ class HmiAgentNode():
         """
         Handles all the LED changes.
         """
-        self.led_control_message.control_mode = Led_Control.SET_LED
-        self.led_control_message.number_leds = 20
-        self.led_control_message.brightness = 1.0
-        self.led_control_message.red = 255
-        self.led_control_message.green = 0
-        self.led_control_message.blue = 255
+
+        if self.operator_joystick.getButton(10):
+            self.led_control_message.control_mode = Led_Control.SET_LED
+            self.led_control_message.number_leds = 50
+            self.led_control_message.brightness = 0.0
+            self.led_control_message.red = 0
+            self.led_control_message.green = 0
+            self.led_control_message.blue = 0
+        else:
+            self.led_control_message.control_mode = Led_Control.SET_LED
+            self.led_control_message.number_leds = 50
+            self.led_control_message.brightness = 1.0
+            self.led_control_message.red = 92
+            self.led_control_message.green = 6
+            self.led_control_message.blue = 140
 
         # self.led_control_message.control_mode = Led_Control.ANIMATE
         # self.led_control_message.number_leds = 58
