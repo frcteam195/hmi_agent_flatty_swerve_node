@@ -94,6 +94,8 @@ class OperatorSplitParams:
     mid_cube_button_id: int = -1
     pickup_cube_button_id: int = -1
 
+    led_toggle_id: int = -1
+
     # Joystick
     intake_in_button_id: int = -1
     intake_out_button_id: int = -1
@@ -400,7 +402,7 @@ class HmiAgentNode():
         Handles all the LED changes.
         """
 
-        if self.operator_joystick.getRisingEdgeButton(10):
+        if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
             self.curr_color = not self.curr_color
             if self.curr_color:
                 self.led_control_message = color_yellow
