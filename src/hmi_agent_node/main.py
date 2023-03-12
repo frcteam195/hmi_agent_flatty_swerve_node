@@ -26,9 +26,15 @@ from actions_node.game_specific_actions.Subsystem import Subsystem
 from ck_utilities_py_node.pid_controller import PIDController
 # import cProfile
 
-num_leds = 50
-color_purple = Led_Control(0, 0, 92, 6, 140, 0, 1, 0, num_leds)
-color_yellow = Led_Control(0, 0, 255, 255, 0, 0, 1, 0, num_leds)
+NUM_LEDS = 50
+solid_purple = Led_Control(Led_Control.SET_LED, 0, 57, 3, 87, 0, 1, 0, NUM_LEDS)
+solid_yellow = Led_Control(Led_Control.SET_LED, 0, 255, 255, 0, 0, 1, 0, NUM_LEDS)
+strobe_purple = Led_Control(Led_Control.ANIMATE, Led_Control.STROBE, 57, 3, 87, 0, 0, 0.25, NUM_LEDS)
+strobe_red = Led_Control(Led_Control.ANIMATE, Led_Control.STROBE, 96, 0, 0, 0, 0, 0.10, NUM_LEDS)
+larson_purple = Led_Control(Led_Control.ANIMATE, Led_Control.LARSON, 57, 3, 87, 0, 0, 0.20, NUM_LEDS)
+fire_animation = Led_Control(Led_Control.ANIMATE, Led_Control.FIRE, 0, 0, 0, 0, 1, 1, NUM_LEDS)
+rainbow = Led_Control(Led_Control.ANIMATE, Led_Control.RAINBOW, 0, 0, 0, 0, 0.5, 0.60, NUM_LEDS)
+twinkle_purple = Led_Control(Led_Control.ANIMATE, Led_Control.TWINKLE_OFF, 57, 3, 87, 0, 0, 0.25, NUM_LEDS)
 
 @dataclass
 class DriverParams:
@@ -133,10 +139,11 @@ class HmiAgentNode():
 
         self.drivetrain_orientation = HMI_Signals.FIELD_CENTRIC
 
-        self.led_control_message = color_purple
+        self.led_control_message = solid_purple
         self.led_timer = 0
         self.party_time = False
-        self.curr_color = False
+
+        self.current_color = solid_purple
 
         self.heading = 0.0
 
@@ -402,60 +409,14 @@ class HmiAgentNode():
         Handles all the LED changes.
         """
 
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
-            self.curr_color = not self.curr_color
-            if self.curr_color:
-                self.led_control_message = color_yellow
-            else:
-                self.led_control_message = color_purple
-                
-
-        # self.led_control_message.control_mode = Led_Control.ANIMATE
-        # self.led_control_message.number_leds = 58
-
-        # if not robot_status.is_connected():
-        #     self.led_control_message.animation = Led_Control.STROBE
-        #     self.led_control_message.speed = 0.3
-        #     self.led_control_message.brightness = 0.5
-        #     self.led_control_message.red = 255
-        #     self.led_control_message.green = 0
-        #     self.led_control_message.blue = 0
-
-        # else:
-        #     if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 270:
-        #         self.led_timer = rospy.get_time()
-        #         self.led_control_message.animation = Led_Control.STROBE
-        #         self.led_control_message.speed = 0.1
-        #         self.led_control_message.brightness = 0.5
-        #         self.led_control_message.red = 255
-        #         self.led_control_message.green = 255
-        #         self.led_control_message.blue = 0
-
-        #     if self.operator_joystick.getPOV(self.operator_params.led_control_pov_id) == 90:
-        #         self.led_timer = rospy.get_time()
-        #         self.led_control_message.animation = Led_Control.STROBE
-        #         self.led_control_message.speed = 0.1
-        #         self.led_control_message.brightness = 0.5
-        #         self.led_control_message.red = 255
-        #         self.led_control_message.green = 0
-        #         self.led_control_message.blue = 255
-
-        #     # if self.operator_joystick.getRisingEdgeButton(self.operator_params.party_mode_button_id):
-        #     #     self.party_time = not self.party_time
-
-        #     if rospy.get_time() - self.led_timer > 3:
-        #         if not self.party_time:
-        #             self.led_control_message.animation = Led_Control.LARSON
-        #             self.led_control_message.speed = 0.5
-        #             self.led_control_message.brightness = 0.5
-        #             self.led_control_message.red = 0
-        #             self.led_control_message.green = 255
-        #             self.led_control_message.blue = 0
-
-        #         else:
-        #             self.led_control_message.animation = Led_Control.RAINBOW
-        #             self.led_control_message.speed = 1
-        #             self.led_control_message.brightness = 1
+        if not robot_status.is_connected():
+            self.led_control_message = strobe_red
+        elif robot_status.get_mode() != RobotMode.TELEOP:
+            self.led_control_message = rainbow
+        else:
+            if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
+                self.current_color = solid_yellow if self.current_color == solid_purple else solid_purple
+            self.led_control_message = self.current_color
 
         self.led_control_publisher.publish(self.led_control_message)
 
