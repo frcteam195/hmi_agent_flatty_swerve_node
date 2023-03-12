@@ -233,6 +233,11 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
+        # TODO: Real button.
+        hmi_update_message.drivetrain_xmode = False
+        if self.operator_joystick.getRisingEdgeButton(10):
+            hmi_update_message.drivetrain_xmode = True
+
         if self.driver_joystick.getRisingEdgeButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose(robot_status.get_alliance())
 
@@ -412,7 +417,7 @@ class HmiAgentNode():
         if not robot_status.is_connected():
             self.led_control_message = strobe_red
         elif robot_status.get_mode() != RobotMode.TELEOP:
-            self.led_control_message = rainbow
+            self.led_control_message = larson_purple
         else:
             if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
                 self.current_color = solid_yellow if self.current_color == solid_purple else solid_purple
