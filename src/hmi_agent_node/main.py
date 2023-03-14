@@ -101,7 +101,7 @@ class HmiAgentNode():
 
         #DO NOT REMOVE THIS CHECK!!!!!!!!!! DID YOU LEARN NOTHING FROM 2022?!
         if robot_status.get_mode() != RobotMode.TELEOP:
-            self.process_leds()
+            # self.process_leds()
             return
 
         Joystick.update(message)
@@ -152,24 +152,26 @@ class HmiAgentNode():
         if self.driver_joystick.getRisingEdgeButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose(robot_status.get_alliance())
 
+        self.hmi_publisher.publish(hmi_update_message)
+
         #######################################################################
         ###                        OPERATOR CONTROLS                        ###
         #######################################################################
-        self.process_leds()
+        # self.process_leds()
 
 
-    def process_leds(self):
-        """
-        Handles all the LED changes.
-        """
+    # def process_leds(self):
+    #     """
+    #     Handles all the LED changes.
+    #     """
 
-        if not robot_status.is_connected():
-            self.led_control_message = strobe_red
-        elif robot_status.get_mode() != RobotMode.TELEOP:
-            self.led_control_message = larson_purple
-        else:
-            # if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
-            #     self.current_color = solid_yellow if self.current_color == solid_purple else solid_purple
-            self.led_control_message = self.current_color
+    #     if not robot_status.is_connected():
+    #         self.led_control_message = strobe_red
+    #     elif robot_status.get_mode() != RobotMode.TELEOP:
+    #         self.led_control_message = larson_purple
+    #     else:
+    #         # if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
+    #         #     self.current_color = solid_yellow if self.current_color == solid_purple else solid_purple
+    #         self.led_control_message = self.current_color
 
-        self.led_control_publisher.publish(self.led_control_message)
+    #     self.led_control_publisher.publish(self.led_control_message)
