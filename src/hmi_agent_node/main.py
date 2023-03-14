@@ -8,8 +8,6 @@ import numpy as np
 import rospy
 import typing
 
-from actions_node.ActionRunner import ActionRunner
-from actions_node.game_specific_actions import AutomatedActions
 from ck_ros_msgs_node.msg import HMI_Signals, Intake_Control, Led_Control, Arm_Goal, Arm_Status
 from nav_msgs.msg import Odometry
 
@@ -20,9 +18,7 @@ from ck_utilities_py_node.rosparam_helper import load_parameter_class
 from frc_robot_utilities_py_node.frc_robot_utilities_py import *
 from frc_robot_utilities_py_node.RobotStatusHelperPy import Alliance, BufferedROSMsgHandlerPy
 
-from actions_node.game_specific_actions.PlaceHighConeAction import PlaceHighConeAction
 from ck_ros_base_msgs_node.msg import Joystick_Status
-from actions_node.game_specific_actions.Subsystem import Subsystem
 from ck_utilities_py_node.pid_controller import PIDController
 # import cProfile
 
@@ -60,60 +56,6 @@ class DriverParams:
     field_centric_button_id: int = -1
 
 
-@dataclass
-class OperatorParams:
-    """
-    Operator parameters. Must match the configuration YAML loaded.
-    """
-    outtake_axis_id: int = -1
-    intake_axis_id: int = -1
-    activation_threshold: float = 0
-
-    ground_intake_button_id: int = -1
-    hybrid_node_button_id: int = -1
-    mid_node_button_id: int = -1
-    high_node_button_id: int = -1
-    in_bot_button_id: int = -1
-    party_mode_button_id: int = -1
-    operator_pinch_button_id: int = -1
-    operator_unpinch_button_id: int = -1
-    wrist_left_90_button_id: int = -1
-    wrist_straight_button_id: int = -1
-    wrist_left_180_button_id: int = -1
-
-    led_control_pov_id: int = -1
-
-
-@dataclass
-class OperatorSplitParams:
-    # Button Box
-    home_button_id: int = -1
-    shelf_button_id: int = -1
-    low_button_id: int = -1
-
-    high_cone_button_id: int = -1
-    mid_cone_button_id: int = -1
-    pickup_cone_button_id: int = -1
-    pickup_dead_cone_button_id:  int = -1
-
-    high_cube_button_id: int = -1
-    mid_cube_button_id: int = -1
-    pickup_cube_button_id: int = -1
-
-    led_toggle_id: int = -1
-
-    # Joystick
-    intake_in_button_id: int = -1
-    intake_out_button_id: int = -1
-
-    intake_close_button_id: int = -1
-    intake_open_button_id: int = -1
-
-    pre_score_position_button_id: int = -1
-
-    led_control_pov_id: int = -1
-
-
 class HmiAgentNode():
     """
     The HMI agent node.
@@ -122,20 +64,11 @@ class HmiAgentNode():
     def __init__(self) -> None:
         register_for_robot_updates()
 
-        self.action_runner = ActionRunner()
-
         self.driver_joystick = Joystick(0)
-        # self.operator_controller = Joystick(1)
-
-        self.operator_button_box = Joystick(1)
-        self.operator_joystick = Joystick(2)
 
         self.driver_params = DriverParams()
-        # self.operator_params = OperatorParams()
-        self.operator_params = OperatorSplitParams()
 
         load_parameter_class(self.driver_params)
-        load_parameter_class(self.operator_params)
 
         self.drivetrain_orientation = HMI_Signals.FIELD_CENTRIC
 
@@ -153,25 +86,12 @@ class HmiAgentNode():
         self.intake_publisher = rospy.Publisher(name="/IntakeControl", data_class=Intake_Control, queue_size=10, tcp_nodelay=True)
         self.led_control_publisher = rospy.Publisher(name="/LedControl", data_class=Led_Control, queue_size=10, tcp_nodelay=True)
 
-        self.arm_goal_publisher = rospy.Publisher(name="/ArmGoal", data_class=Arm_Goal, queue_size=10, tcp_nodelay=True)
-        self.arm_goal = Arm_Goal()
-        self.arm_goal.goal = Arm_Goal.HOME
-        self.arm_goal.wrist_goal = Arm_Goal.WRIST_ZERO
 
         self.odometry_subscriber = BufferedROSMsgHandlerPy(Odometry)
         self.odometry_subscriber.register_for_updates("odometry/filtered")
 
-        self.arm_subscriber = BufferedROSMsgHandlerPy(Arm_Status)
-        self.arm_subscriber.register_for_updates("/ArmStatus")
-
-        self.orientation_helper = PIDController(kP=0.0047, kD=0.001, filter_r=0.6)
-
         rospy.Subscriber(name="/JoystickStatus", data_class=Joystick_Status, callback=self.joystick_callback, queue_size=1, tcp_nodelay=True)
-        # profiler = cProfile.Profile()
-        # profiler.enable()
         rospy.spin()
-        # profiler.disable()
-        # profiler.dump_stats("/mnt/working/hmi_agent_node.stats")
 
 
     def joystick_callback(self, message: Joystick_Status):
@@ -218,12 +138,8 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_swerve_direction = active_theta
 
-        # Scale the drive power based on current arm position.
-        arm_status_message = self.arm_subscriber.get()
-        limited_forward_velocity, limited_angular_rotation = limit_drive_power(arm_status_message, r, z)
-
-        hmi_update_message.drivetrain_swerve_percent_fwd_vel = limited_forward_velocity
-        hmi_update_message.drivetrain_swerve_percent_angular_rot = limited_angular_rotation
+        hmi_update_message.drivetrain_swerve_percent_fwd_vel = r
+        hmi_update_message.drivetrain_swerve_percent_angular_rot = z
 
         # Swap between field centric and robot oriented drive.
         if self.driver_joystick.getButton(self.driver_params.robot_orient_button_id):
@@ -233,181 +149,14 @@ class HmiAgentNode():
 
         hmi_update_message.drivetrain_orientation = self.drivetrain_orientation
 
-        # TODO: Real button.
-        hmi_update_message.drivetrain_xmode = False
-        if self.operator_joystick.getRisingEdgeButton(10):
-            hmi_update_message.drivetrain_xmode = True
-
         if self.driver_joystick.getRisingEdgeButton(self.driver_params.reset_odometry_button_id):
             reset_robot_pose(robot_status.get_alliance())
 
         #######################################################################
         ###                        OPERATOR CONTROLS                        ###
         #######################################################################
-        self.process_intake_control()
         self.process_leds()
 
-        # Determine the alliance station the robot is facing.
-        if self.odometry_subscriber.get() is not None:
-            odometry_message = self.odometry_subscriber.get()
-            rotation = Rotation(odometry_message.pose.pose.orientation)
-            yaw = rotation.yaw
-            yaw = normalize_to_2_pi(yaw)
-            self.heading = np.degrees(yaw)
-
-        target_alliance = Alliance.RED if 90 < self.heading < 270 else Alliance.BLUE
-        hmi_update_message.drivetrain_heading = self.heading
-
-
-        ################################################################################
-        ###                         CONTROL MAPPINGS                                 ###
-        ################################################################################
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.home_button_id):
-            self.arm_goal.goal = Arm_Goal.HOME
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.shelf_button_id):
-            self.arm_goal.goal = Arm_Goal.SHELF_PICKUP
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.HIGH_CONE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.MID_CONE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.GROUND_CONE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_dead_cone_button_id):
-            self.arm_goal.goal = Arm_Goal.GROUND_DEAD_CONE
-
-        if self.operator_joystick.getRisingEdgeButton(self.operator_params.pre_score_position_button_id):
-            self.arm_goal.goal = Arm_Goal.PRE_SCORE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.high_cube_button_id):
-            self.arm_goal.goal = Arm_Goal.HIGH_CUBE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.mid_cube_button_id):
-            self.arm_goal.goal = Arm_Goal.MID_CUBE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.pickup_cube_button_id):
-            self.arm_goal.goal = Arm_Goal.GROUND_CUBE
-
-        if self.operator_button_box.getRisingEdgeButton(self.operator_params.low_button_id):
-            self.arm_goal.goal = Arm_Goal.LOW_SCORE
-
-        # TODO: Put this in the params
-        if self.operator_button_box.getRisingEdgeButton(11):
-            self.arm_goal.goal = Arm_Goal.PRE_DEAD_CONE
-
-        pov_status, pov_dir = self.operator_joystick.getRisingEdgePOV(0)
-
-        if pov_status:
-            if pov_dir == 0:
-                self.arm_goal.wrist_goal = Arm_Goal.WRIST_ZERO
-
-            if pov_dir == 90:
-                if self.arm_goal.wrist_goal == Arm_Goal.WRIST_180:
-                    self.arm_goal.wrist_goal = Arm_Goal.WRIST_ZERO
-                elif self.arm_goal.wrist_goal == Arm_Goal.WRIST_ZERO:
-                    self.arm_goal.wrist_goal = Arm_Goal.WRIST_180
-
-            if pov_dir == 180:
-                self.arm_goal.wrist_goal = Arm_Goal.WRIST_180
-
-            if pov_dir == 270:
-                self.arm_goal.wrist_goal = Arm_Goal.WRIST_90
-
-        reverse_arm = target_alliance != robot_status.get_alliance()
-
-        if self.driver_joystick.getButton(self.driver_params.robot_align_to_grid): # or \
-            # self.arm_goal.goal == Arm_Goal.PRE_SCORE: or \
-            # self.arm_goal.goal == Arm_Goal.SHELF_PICKUP:
-            #Do odometry align to grid
-            odom_msg : Odometry = self.odometry_subscriber.get()
-            alliance : Alliance = robot_status.get_alliance()
-            if odom_msg is not None and alliance is not None:
-                desired_heading : float = 0
-
-                if reverse_arm:
-
-                    if alliance == Alliance.RED:
-                        desired_heading = 0
-                    elif alliance == Alliance.BLUE:
-                        desired_heading = 180
-                else:
-                    if alliance == Alliance.RED:
-                        desired_heading = 180
-                    elif alliance == Alliance.BLUE:
-                        desired_heading = 0
-
-                curr_pose = Pose(odom_msg.pose.pose)
-                actual_heading = math.degrees(curr_pose.orientation.yaw)
-                hmi_update_message.desired_heading = desired_heading
-                hmi_update_message.actual_heading = actual_heading
-                error = wrapMinMax(desired_heading - actual_heading, -180, 180)
-                hmi_update_message.error = error
-                output_val = limit(self.orientation_helper.update_by_error(error), -0.6, 0.6)
-                hmi_update_message.initial_output_val = output_val
-                output_val = normalizeWithDeadband(output_val, 3 * self.orientation_helper.kP, 0.08)
-                hmi_update_message.second_output_val = output_val
-                hmi_update_message.drivetrain_swerve_percent_angular_rot = output_val
-
-        # arm should point away from our driver stattion for shelf pickup
-        if self.arm_goal.goal is Arm_Goal.SHELF_PICKUP:
-            reverse_arm = not reverse_arm
-
-        if reverse_arm:
-            # Robot is facing our driver station
-            self.arm_goal.goal_side = Arm_Goal.SIDE_BACK
-        else:
-            self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT
-
-        if self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_CUBE, Arm_Goal.GROUND_DEAD_CONE, Arm_Goal.PRE_DEAD_CONE):
-            self.arm_goal.goal_side = Arm_Goal.SIDE_FRONT if not self.operator_joystick.getButton(3) else Arm_Goal.SIDE_BACK
-
-        self.arm_goal_publisher.publish(self.arm_goal)
-
-        self.hmi_publisher.publish(hmi_update_message)
-        self.action_runner.loop(robot_status.get_mode())
-
-    def process_intake_control(self):
-        """
-        Handles all intake control.
-        """
-        intake_control = Intake_Control()
-        intake_action = None
-
-        if Subsystem.INTAKE in self.action_runner.get_operated_systems():
-            intake_control = None
-
-        if self.operator_joystick.getButton(self.operator_params.intake_close_button_id):
-            self.pinch_active = True
-        elif self.operator_joystick.getButton(self.operator_params.intake_open_button_id):
-            self.pinch_active = False
-        elif self.arm_goal.goal in (Arm_Goal.GROUND_CUBE, Arm_Goal.PRE_DEAD_CONE):
-            self.pinch_active = False
-        elif self.arm_goal.goal in (Arm_Goal.GROUND_CONE, Arm_Goal.GROUND_DEAD_CONE):
-            self.pinch_active = True
-
-        if self.operator_joystick.getButton(self.operator_params.intake_in_button_id):
-            intake_control.rollers_intake = True
-            intake_control.rollers_outtake = False
-        elif self.operator_joystick.getButton(self.operator_params.intake_out_button_id):
-            intake_control.rollers_intake = False
-            intake_control.rollers_outtake = True
-            if self.arm_goal.goal == Arm_Goal.HIGH_CUBE:
-                intake_control.speed = 0.3
-            else:
-                intake_control.speed = 0
-
-        if intake_control is not None:
-            intake_control.pinched = self.pinch_active
-
-        self.intake_publisher.publish(intake_control)
-
-        if intake_action is not None:
-            self.action_runner.start_action(intake_action)
 
     def process_leds(self):
         """
@@ -419,32 +168,8 @@ class HmiAgentNode():
         elif robot_status.get_mode() != RobotMode.TELEOP:
             self.led_control_message = larson_purple
         else:
-            if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
-                self.current_color = solid_yellow if self.current_color == solid_purple else solid_purple
+            # if self.operator_button_box.getRisingEdgeButton(self.operator_params.led_toggle_id):
+            #     self.current_color = solid_yellow if self.current_color == solid_purple else solid_purple
             self.led_control_message = self.current_color
 
         self.led_control_publisher.publish(self.led_control_message)
-
-
-def limit_drive_power(arm_status: Arm_Status, forward_velocity: float, angular_rotation: float) -> typing.Tuple[float, float]:
-    """
-    Limit the drive power depending on the current arm position.
-    """
-    forward_limit = 1.0
-    angular_limit = 1.0
-
-    if arm_status is not None:
-        overall_arm_angle = abs(arm_status.arm_base_angle + arm_status.arm_upper_angle)
-        overall_arm_angle = limit(overall_arm_angle, 0.0, 150)
-
-        forward_limit = -0.006666667 * overall_arm_angle + 1.2
-        angular_limit = -0.006666667 * overall_arm_angle + 1.2
-
-        if arm_status.extended:
-            forward_limit -= 0.1
-            angular_limit -= 0.1
-
-    forward_limit = limit(forward_limit, 0.0, 1.0)
-    angular_limit = limit(angular_limit, 0.0, 1.0)
-
-    return limit(forward_velocity, -forward_limit, forward_limit), limit(angular_rotation, -angular_limit, angular_limit)

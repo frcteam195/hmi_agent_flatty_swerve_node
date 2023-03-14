@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(hmi_agent_node)
 
-find_package(catkin REQUIRED COMPONENTS message_generation roscpp rospy std_msgs ck_ros_msgs_node ck_utilities_py_node frc_robot_utilities_py_node actions_node)
+find_package(catkin REQUIRED COMPONENTS message_generation roscpp rospy std_msgs ck_ros_msgs_node ck_utilities_py_node frc_robot_utilities_py_node)
 
 catkin_python_setup()
 
@@ -20,7 +20,7 @@ catkin_python_setup()
 # )
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime roscpp rospy std_msgs ck_ros_msgs_node ck_utilities_py_node frc_robot_utilities_py_node actions_node
+  CATKIN_DEPENDS message_runtime roscpp rospy std_msgs ck_ros_msgs_node ck_utilities_py_node frc_robot_utilities_py_node
 )
 
 # include_directories(include ${catkin_INCLUDE_DIRS})

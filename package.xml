@@ -19,7 +19,6 @@
   <depend>std_msgs</depend>
   <depend>ck_utilities_py_node</depend>
   <depend>ck_ros_msgs_node</depend>
-  <depend>actions_node</depend>
   <depend>frc_robot_utilities_py_node</depend>
 
   <test_depend>rostest</test_depend>
